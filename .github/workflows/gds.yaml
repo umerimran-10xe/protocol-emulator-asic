@@ -1,7 +1,15 @@
 name: gds
 
+# Hardening takes ~15 minutes, so it does not run on every push. It runs when
+# something that can actually change the layout changes -- RTL, the LibreLane
+# config, the project definition -- or on demand via workflow_dispatch.
+# Docs, scripts and README commits no longer cost a hardening run.
 on:
   push:
+    paths:
+      - 'src/**'
+      - 'info.yaml'
+      - '.github/workflows/gds.yaml'
   workflow_dispatch:
 
 jobs:
