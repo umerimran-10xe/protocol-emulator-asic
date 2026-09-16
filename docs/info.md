@@ -20,10 +20,23 @@ The core is organised around three ideas:
   number of cycles.
 - **Independent state machines.** Multiple program counters share one pin block,
   so full-duplex protocols (SPI, or simultaneous UART TX and RX) run without
-  interleaving a single instruction stream by hand.
+  interleaving a single instruction stream by hand. This build has one machine;
+  the store and pin block are already shared, which is what lets more be added.
 
-Instruction memory is loaded over a simple configuration port after reset, which
-is what makes the design reprogrammable in silicon.
+Instruction memory is 128 x 16 bits, loaded over a simple SPI configuration port
+after reset, which is what makes the design reprogrammable in silicon.
+
+Three things set it apart from a conventional bit-bang engine:
+
+- **Waits cannot hang the chip.** `WAITP` carries a timeout; when it expires the
+  machine raises a fault flag and a `JMP` on that flag runs a recovery routine,
+  so a missing clock or a stuck bus is a program-visible event.
+- **Open-drain is native, per pin.** A pin in open-drain mode drives low and
+  releases high, in hardware, so I2C is an ordinary program rather than a
+  special case threaded through every instruction.
+- **Timing is by deadline, not by delay.** `WAITU` waits until the shared cycle
+  counter reaches an absolute target. Adding instructions before it does not
+  move when it fires, so jitter cannot accumulate across a long frame.
 
 Target protocols: **UART, SPI and I2C** first, with JTAG, SWD and PS/2 reachable
 from the same instruction set. Low-speed USB and 10Mbit Ethernet are stretch
@@ -32,8 +45,9 @@ goals bounded by the achievable clock rate.
 This design targets the IHP CMOS5L 130nm process at 6x4 tiles
 (1289.28 x 710.64 um) with a 50 MHz clock.
 
-> **Status:** architecture and toolchain are in place; the RTL currently in
-> `src/project.v` is still the Tiny Tapeout example and is being replaced.
+> **Status:** first working increment -- one state machine, the full instruction
+> set, and the configuration port. Edge capture and the additional state
+> machines are next. See `docs/architecture.md` for the measured area position.
 
 ## How to test
 
@@ -43,11 +57,22 @@ This design targets the IHP CMOS5L 130nm process at 6x4 tiles
 2. Raise `run` to start execution.
 3. Attach the protocol pins `pio[7:0]` to the device under test.
 
+`run` doubles as the restart control: a 0 to 1 transition resets the program
+counter to zero and clears the cycle counter, so every run starts identically.
+While `run` is low the machine is frozen, and each pulse on `step` advances it
+one cycle -- enough to single-step a program on the bench.
+
+The configuration frame is an 8-bit header (bit 7 set to read, bits 6:0 the
+start address) followed by 16-bit words with the address auto-incrementing, so
+a whole program loads in one chip-select.
+
 For a UART loopback smoke test, load the UART program, tie `pio[0]` (TX) to
 `pio[1]` (RX), and check that transmitted bytes come back.
 
 The cocotb testbench in `test/` drives the same sequence in simulation and runs
-against both RTL and the post-layout gate-level netlist.
+against both RTL and the post-layout gate-level netlist. Programs are written
+with the assembler in `test/protoemu_asm.py`; `docs/isa.md` is the instruction
+reference.
 
 ## External hardware
 

@@ -27,9 +27,17 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | Path | What |
 |---|---|
 | `src/` | RTL and the LibreLane config |
+| `src/protoemu_isa.vh` | the instruction encoding, shared by RTL and assembler |
 | `test/` | cocotb testbenches (run against RTL and the post-layout netlist) |
+| `test/protoemu_asm.py` | assembler, so test programs are mnemonics not hex |
+| `docs/isa.md` | instruction set reference |
+| `docs/architecture.md` | design decisions and the measurements behind them |
+| `docs/local-hardening.md` | running the full RTL-to-GDS flow on this machine |
 | `docs/info.md` | datasheet source |
+| `scripts/lint.sh` | the same Verilator lint CI runs, in milliseconds |
 | `scripts/area.sh` | fast local area check against the 6x4 budget |
+| `scripts/formal.sh` | SymbiYosys proofs of the state machine's safety properties |
+| `scripts/harden.sh` | local RTL-to-GDS with a progress bar |
 | `info.yaml` | Tiny Tapeout project definition: tiles, pinout, top module |
 
 ## Building
@@ -43,15 +51,31 @@ For the fast local loop:
 
 ```sh
 source ~/eda/activate-eda.sh   # yosys, iverilog, verilator, sby, cocotb
-cd test && make                # RTL simulation
-./scripts/area.sh              # cell count vs. the 6x4 budget
+./scripts/lint.sh              # ~12 ms
+cd test && make                # RTL simulation, ~3 s
+./scripts/formal.sh            # SymbiYosys safety proofs, ~1 s
+./scripts/area.sh              # cell count vs. the 6x4 budget, seconds
+./scripts/harden.sh -f         # RTL to GDS, ~6 min (full run ~59 min)
 ```
+
+Each rung catches what the one below it cannot, and CI stays authoritative.
+`docs/local-hardening.md` covers the rootless Nix setup the last step needs.
 
 ## Status
 
-Toolchain, CI and project configuration are in place and green. The RTL in
-`src/project.v` is still the Tiny Tapeout example and is being replaced by the
-emulator core.
+First working increment: one state machine executing the full instruction set,
+a 128 x 16 program store, and an SPI configuration port. 14 cocotb tests pass
+against RTL, and the design hardens cleanly.
+
+| | |
+|---|---|
+| Cell area | 219,763 um2, **24.0%** of the 6x4 die |
+| Tests | 15 cocotb tests passing |
+| Formal | 6 safety properties proved by k-induction |
+| Lint | clean, zero warnings |
+
+Next: timestamped edge capture, then scaling from one state machine to four.
+`docs/architecture.md` has the measured area case for both.
 
 ## License
 
