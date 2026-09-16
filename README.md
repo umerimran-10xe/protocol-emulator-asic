@@ -1,42 +1,58 @@
-![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
+# Protocol Emulator ASIC
 
-# Tiny Tapeout Verilog Project Template
+A reprogrammable, general-purpose **protocol emulator** for the
+[Jane Street protocol emulator ASIC competition](https://blog.janestreet.com/protocol-emulator-asic-competition/).
 
-- [Read the documentation for project](docs/info.md)
+Rather than putting fixed UART, SPI and I2C blocks on the die, this chip runs
+firmware on a small engine whose instruction set is built for pin timing —
+reading pins, driving pins, waiting on edges, and counting cycles exactly. New
+protocols can be added after fabrication.
 
-## What is Tiny Tapeout?
+## Target
 
-Tiny Tapeout is an educational project that aims to make it easier and cheaper than ever to get your digital and analog designs manufactured on a real chip.
+| | |
+|---|---|
+| Process | IHP CMOS5L 130nm (`ihp-sg13cmos5l`) |
+| Shuttle | Tiny Tapeout, targeting the March 2027 CMOS5L shuttle |
+| Area | 6x4 tiles = 1289.28 x 710.64 um |
+| Clock | 50 MHz (`CLOCK_PERIOD` 20ns) |
+| Template | [`ttihp-verilog-template`](https://github.com/TinyTapeout/ttihp-verilog-template) `cmos5l` branch |
+| Deadline | 2027-01-18 |
 
-To learn more and get started, visit https://tinytapeout.com.
+Protocols: **UART, SPI, I2C** first; JTAG, SWD and PS/2 reachable from the same
+ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 
-## Set up your Verilog project
+## Repository layout
 
-1. Add your Verilog files to the `src` folder.
-2. Edit the [info.yaml](info.yaml) and update information about your project, paying special attention to the `source_files` and `top_module` properties. If you are upgrading an existing Tiny Tapeout project, check out our [online info.yaml migration tool](https://tinytapeout.github.io/tt-yaml-upgrade-tool/).
-3. Edit [docs/info.md](docs/info.md) and add a description of your project.
-4. Adapt the testbench to your design. See [test/README.md](test/README.md) for more information.
+| Path | What |
+|---|---|
+| `src/` | RTL and the LibreLane config |
+| `test/` | cocotb testbenches (run against RTL and the post-layout netlist) |
+| `docs/info.md` | datasheet source |
+| `scripts/area.sh` | fast local area check against the 6x4 budget |
+| `info.yaml` | Tiny Tapeout project definition: tiles, pinout, top module |
 
-The GitHub action will automatically build the ASIC files using [LibreLane](https://www.zerotoasiccourse.com/terminology/librelane/).
+## Building
 
-## Enable GitHub actions to build the results page
+The full RTL-to-GDS flow runs in GitHub Actions via LibreLane — no local ASIC
+tooling required. Push, and the `gds` workflow hardens the design, runs the
+Tiny Tapeout precheck, re-runs the tests against the gate-level netlist, and
+publishes a GDS viewer plus the `tt_submission` artifact.
 
-- [Enabling GitHub Pages](https://tinytapeout.com/faq/#my-github-action-is-failing-on-the-pages-part)
+For the fast local loop:
 
-## Resources
+```sh
+source ~/eda/activate-eda.sh   # yosys, iverilog, verilator, sby, cocotb
+cd test && make                # RTL simulation
+./scripts/area.sh              # cell count vs. the 6x4 budget
+```
 
-- [FAQ](https://tinytapeout.com/faq/)
-- [Digital design lessons](https://tinytapeout.com/digital_design/)
-- [Learn how semiconductors work](https://tinytapeout.com/siliwiz/)
-- [Join the community](https://tinytapeout.com/discord)
-- [Build your design locally](https://www.tinytapeout.com/guides/local-hardening/)
+## Status
 
-## What next?
+Toolchain, CI and project configuration are in place and green. The RTL in
+`src/project.v` is still the Tiny Tapeout example and is being replaced by the
+emulator core.
 
-- [Submit your design to the next shuttle](https://app.tinytapeout.com/).
-- Edit [this README](README.md) and explain your design, how it works, and how to test it.
-- Share your project on your social network of choice:
-  - LinkedIn [#tinytapeout](https://www.linkedin.com/search/results/content/?keywords=%23tinytapeout) [@TinyTapeout](https://www.linkedin.com/company/100708654/)
-  - Mastodon [#tinytapeout](https://chaos.social/tags/tinytapeout) [@matthewvenn](https://chaos.social/@matthewvenn)
-  - X (formerly Twitter) [#tinytapeout](https://twitter.com/hashtag/tinytapeout) [@tinytapeout](https://twitter.com/tinytapeout)
-  - Bluesky [@tinytapeout.com](https://bsky.app/profile/tinytapeout.com)
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE).
