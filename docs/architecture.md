@@ -101,7 +101,7 @@ the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 | An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
 | Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-**Directed tests (cocotb) — running.** 16 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 17 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
@@ -111,11 +111,17 @@ and the Verilog header agree on all 46 ISA constants.
 **Constrained-random — next.** Randomised instruction streams against a Python
 reference model of the ISA, comparing pin traces cycle by cycle.
 
-**Protocol conformance — started.** `test_uart_transmit_is_decoded_by_a_receiver`
-bit-bangs a 1 Mbaud UART frame and decodes it with a receiver written from the
-protocol rather than from the program under test. SPI and I2C models are next.
-This is the test that matters most: it shows a protocol the hardware was never
-told about, expressed as a program.
+**Protocol conformance — started.** Two protocols so far, both decoded by
+models written from the protocol rather than from the program under test:
+
+- a 1 Mbaud UART frame, recovered by a receiver that finds the start bit and
+  samples at mid-bit;
+- an I2C START and address byte on a bus modelled with pull-ups, where a line
+  reads low only while the emulator actively drives it -- so the model would
+  catch the emulator driving high, not just report the wrong byte.
+
+SPI against a third-party model is next. These are the tests that matter most:
+they show protocols the hardware was never told about, expressed as programs.
 
 **Gate-level — running in CI.** The same tests re-run on the post-layout
 netlist by the `gl_test` job.

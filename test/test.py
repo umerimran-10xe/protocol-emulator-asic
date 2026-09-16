@@ -533,3 +533,71 @@ async def test_uart_transmit_is_decoded_by_a_receiver(dut):
     await host.start()
     got = await receiver
     assert got == byte, f"received {got:#04x}, transmitted {byte:#04x}"
+
+
+def _bus(dut, pin):
+    """An open-drain bus line: low only while the emulator actively drives it,
+    otherwise pulled high. This is what a real I2C bus with pull-ups looks like,
+    and reading it this way also checks the emulator never drives high.
+    """
+    oe, out = int(dut.uio_oe.value), int(dut.uio_out.value)
+    driving = (oe >> pin) & 1
+    if driving:
+        assert not ((out >> pin) & 1), f"pin {pin} drove high on an open-drain bus"
+        return 0
+    return 1
+
+
+async def _i2c_watch_address(dut, sda=0, scl=1, timeout=20000):
+    """Wait for an I2C START (SDA falling while SCL is high), then sample SDA on
+    each rising edge of SCL and return the eight bits, MSB first."""
+    prev_sda = prev_scl = 1
+    started = False
+    byte, bits = 0, 0
+
+    for _ in range(timeout):
+        await RisingEdge(dut.clk)
+        now_sda, now_scl = _bus(dut, sda), _bus(dut, scl)
+        if not started:
+            if prev_scl and now_scl and prev_sda and not now_sda:
+                started = True
+        elif now_scl and not prev_scl:             # SCL rising: sample
+            byte = (byte << 1) | now_sda
+            bits += 1
+            if bits == 8:
+                return byte
+        prev_sda, prev_scl = now_sda, now_scl
+    raise AssertionError(f"saw {bits} bits after start={started}")
+
+
+@cocotb.test()
+async def test_i2c_start_and_address_on_an_open_drain_bus(dut):
+    """Drive an I2C START and an address byte with both lines in open-drain.
+
+    Nothing in the program says "open-drain" more than once: DRIVEMODE is set
+    at the top and every SET after it releases rather than drives high. On an
+    engine without per-pin open-drain this becomes a pin-direction dance around
+    every single bit.
+    """
+    host = await setup(dut)
+    address = 0xA4                       # 7-bit address 0x52, write
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0x03),              # pin 0 SDA, pin 1 SCL
+        A.LOAD(A.REG_DRIVEMODE, 0x03),            # both open-drain
+        A.SET(0x03, 8),                           # idle: both released high
+        A.SET(0x02, 8),                           # START: SDA low, SCL high
+        A.SET(0x00, 8),                           # SCL low, ready for data
+        A.LOAD(A.REG_SHIFTCFG,
+               A.shiftcfg(clkpin=1, clkidle=0, msbfirst=1, clken=1)),
+        A.LOAD(A.REG_SHIFTDAT, address),
+        # Data changes while SCL is low and is stable while SCL is high, which
+        # is what the shift sequencer does for free.
+        A.SHIFT(dir_in=False, pin=0, nbits=8, delay=6),
+        A.SET(0x03, 8),                           # release both for the ACK slot
+        A.SYS(A.SYS_HALT),
+    ])
+
+    watcher = cocotb.start_soon(_i2c_watch_address(dut))
+    await host.start()
+    got = await watcher
+    assert got == address, f"bus saw {got:#04x}, program sent {address:#04x}"

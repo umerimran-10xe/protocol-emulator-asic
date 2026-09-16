@@ -70,7 +70,7 @@ against RTL, and the design hardens cleanly.
 | | |
 |---|---|
 | Cell area | 219,763 um2, **24.0%** of the 6x4 die |
-| Tests | 16 cocotb tests passing, including a decoded UART frame |
+| Tests | 17 cocotb tests passing, including decoded UART and I2C traffic |
 | Formal | 6 safety properties proved by k-induction |
 | Lint | clean, zero warnings |
 
