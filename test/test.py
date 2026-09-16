@@ -469,3 +469,67 @@ async def test_waitu_past_deadline_does_not_stall(dut):
     # on the wrap would need 65536.
     await host.run_until_halt(limit=600)
     assert int(dut.uio_out.value) == 0xFF
+
+
+async def _uart_receive(dut, pin, bit_cycles, timeout=20000):
+    """A UART receiver written from the protocol, not from the program under
+    test: find the start bit, sample at the middle of each bit, LSB first, and
+    check the stop bit. Returns the received byte.
+    """
+    def line():
+        return (int(dut.uio_out.value) >> pin) & 1
+
+    for _ in range(timeout):                       # wait for the idle line
+        await RisingEdge(dut.clk)
+        if line() == 1:
+            break
+    else:
+        raise AssertionError("line never went idle")
+
+    for _ in range(timeout):                       # then for the start bit
+        await RisingEdge(dut.clk)
+        if line() == 0:
+            break
+    else:
+        raise AssertionError("no start bit")
+
+    await ClockCycles(dut.clk, bit_cycles + bit_cycles // 2)   # middle of bit 0
+    byte = 0
+    for i in range(8):
+        byte |= line() << i                        # UART is LSB first
+        await ClockCycles(dut.clk, bit_cycles)
+    assert line() == 1, "stop bit was not high"
+    return byte
+
+
+@cocotb.test()
+async def test_uart_transmit_is_decoded_by_a_receiver(dut):
+    """Bit-bang a real 1 Mbaud UART frame and decode it with a receiver that
+    knows only the protocol. This is the whole point of the chip: a protocol
+    the hardware was never told about, expressed as a program.
+    """
+    bit_cycles = 50                       # 50 MHz / 50 = 1 Mbaud
+    byte = 0x5A
+
+    host = await setup(dut)
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0x01),                  # pin 0 is TX
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.LOAD(A.REG_SHIFTCFG, A.shiftcfg(msbfirst=0, clken=0)),
+        A.LOAD(A.REG_SHIFTDAT, byte),
+        A.SET(0x01),                                  # idle high
+        A.SYS(A.SYS_SYNC),                            # anchor the frame to now
+        A.WAITU(bit_cycles),
+        A.SET(0x00),                                  # start bit
+        A.WAITU(bit_cycles),
+        # Each bit takes 2 * (delay + 1) cycles, so delay 24 is one bit time.
+        A.SHIFT(dir_in=False, pin=0, nbits=8, delay=bit_cycles // 2 - 1),
+        A.SET(0x01),                                  # stop bit
+        A.WAITU(bit_cycles),
+        A.SYS(A.SYS_HALT),
+    ])
+
+    receiver = cocotb.start_soon(_uart_receive(dut, pin=0, bit_cycles=bit_cycles))
+    await host.start()
+    got = await receiver
+    assert got == byte, f"received {got:#04x}, transmitted {byte:#04x}"

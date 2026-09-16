@@ -101,7 +101,7 @@ the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 | An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
 | Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-**Directed tests (cocotb) — running.** 15 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 16 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
@@ -111,9 +111,11 @@ and the Verilog header agree on all 46 ISA constants.
 **Constrained-random — next.** Randomised instruction streams against a Python
 reference model of the ISA, comparing pin traces cycle by cycle.
 
-**Protocol conformance — next.** Testbenches that talk to independent
-UART/SPI/I2C models, so we test against the protocol rather than against our own
-assumptions.
+**Protocol conformance — started.** `test_uart_transmit_is_decoded_by_a_receiver`
+bit-bangs a 1 Mbaud UART frame and decodes it with a receiver written from the
+protocol rather than from the program under test. SPI and I2C models are next.
+This is the test that matters most: it shows a protocol the hardware was never
+told about, expressed as a program.
 
 **Gate-level — running in CI.** The same tests re-run on the post-layout
 netlist by the `gl_test` job.
