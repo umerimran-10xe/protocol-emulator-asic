@@ -24,34 +24,34 @@ project:
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: ""
-  ui[1]: ""
-  ui[2]: ""
-  ui[3]: ""
-  ui[4]: ""
-  ui[5]: ""
-  ui[6]: ""
-  ui[7]: ""
+  ui[0]: "cfg_sclk"
+  ui[1]: "cfg_mosi"
+  ui[2]: "cfg_cs_n"
+  ui[3]: "run"
+  ui[4]: "trig_in"
+  ui[5]: "aux_in0"
+  ui[6]: "aux_in1"
+  ui[7]: "step"
 
   # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "cfg_miso"
+  uo[1]: "irq"
+  uo[2]: "sm0_active"
+  uo[3]: "sm1_active"
+  uo[4]: "trace0"
+  uo[5]: "trace1"
+  uo[6]: "trace2"
+  uo[7]: "halted"
 
   # Bidirectional pins
-  uio[0]: ""
-  uio[1]: ""
-  uio[2]: ""
-  uio[3]: ""
-  uio[4]: ""
-  uio[5]: ""
-  uio[6]: ""
-  uio[7]: ""
+  uio[0]: "pio0"
+  uio[1]: "pio1"
+  uio[2]: "pio2"
+  uio[3]: "pio3"
+  uio[4]: "pio4"
+  uio[5]: "pio5"
+  uio[6]: "pio6"
+  uio[7]: "pio7"
 
 # Do not change!
 yaml_version: 6
