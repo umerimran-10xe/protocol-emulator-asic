@@ -5,18 +5,22 @@
 # this machine, via rootless Nix (nix-portable) -- no Docker, no root.
 #
 #   ./scripts/harden.sh              # full flow, same checks as CI
-#   ./scripts/harden.sh -f           # fast: skip Magic DRC (~80% of runtime)
-#   ./scripts/harden.sh -j 16        # cap threads/processes (be kind on shared machines)
+#   ./scripts/harden.sh -f           # fast: skip Magic DRC
+#   ./scripts/harden.sh -j 4         # opt in to OpenROAD threads (usually a mistake here)
 #
-# Magic DRC over the whole 6x4 die is the bottleneck: 17m50s of CI's ~22m, and
-# single-threaded, so more cores do not help. -f is for iterating; the gds
-# workflow still runs full DRC before anything is submitted.
+# Do not reach for -j to go faster. The whole flow runs under proot, whose
+# ptrace supervision is a single process that every syscall from every thread
+# funnels through, and it saturates one core on its own. Measured here: with
+# threads left alone, global placement takes about two minutes; with
+# OPENROAD_THREADS=32 it had not finished after thirty, with OpenROAD holding
+# 64 threads at a combined 150% CPU while proot sat pegged at 95% of one core.
+# proot is the ceiling, not the core count. -f is what shortens the loop.
 #
 # Results land in runs/wokwi/ (final/metrics.json, final/gds/, ...).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-JOBS=""
+JOBS=""          # OpenROAD/STA threads; empty means leave LibreLane's default
 FAST=0
 while getopts "j:f" opt; do
   case $opt in
@@ -46,7 +50,7 @@ STORE_PATH=$(readlink "$ENV_LINK")
 PATH=$EDA/lrvenv/bin:$PATH python ./tt/tt_tool.py --create-user-config --ihp >/dev/null
 
 JOB_ARGS=()
-[ -n "$JOBS" ] && JOB_ARGS=(-j "$JOBS")
+[ -n "$JOBS" ] && JOB_ARGS=(-c "OPENROAD_THREADS=$JOBS" -c "STA_THREADS=$JOBS")
 if (( FAST )); then
   JOB_ARGS+=(-c RUN_MAGIC_DRC=false)
   TOTAL=$(( TOTAL - 1 ))

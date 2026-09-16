@@ -55,7 +55,7 @@ source ~/eda/activate-eda.sh   # yosys, iverilog, verilator, sby, cocotb
 cd test && make                # RTL simulation, ~3 s
 ./scripts/formal.sh            # SymbiYosys safety proofs, ~1 s
 ./scripts/area.sh              # cell count vs. the 6x4 budget, seconds
-./scripts/harden.sh -f         # RTL to GDS, ~6 min (full run ~59 min)
+./scripts/harden.sh -f         # RTL to GDS; minutes when near-empty, much longer with real logic
 ```
 
 Each rung catches what the one below it cannot, and CI stays authoritative.

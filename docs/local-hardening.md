@@ -16,10 +16,17 @@ prints the key metrics at the end. Results land in `runs/wokwi/`.
 checking the PDK rules, which RTL edits cannot break in new ways from one run
 to the next. Measured on this machine:
 
-| Mode | Time |
-|---|---|
-| full (`harden.sh`) | ~59 min |
-| fast (`harden.sh -f`) | ~6 min |
+| Mode | Near-empty die | Real logic at 24% utilisation |
+|---|---|---|
+| full (`harden.sh`) | ~59 min | dominated by routing, see below |
+| fast (`harden.sh -f`) | ~6 min | detailed routing alone ran past 50 min |
+
+**Those first-column numbers were measured on the Tiny Tapeout example and do
+not carry over.** With real logic the bottleneck moves from Magic DRC to
+detailed routing, which under proot is slow enough that CI is the better place
+for a full run. Use the local flow for lint, tests, proofs and area; use `-f`
+locally when you want to see placement and routing actually converge; let CI
+produce the numbers you quote.
 
 The `gds` workflow always runs the full flow, so nothing reaches a submission
 without Magic DRC having passed. A full local run reproduces CI's numbers
@@ -80,11 +87,39 @@ export NP_LOCATION=$HOME/eda NP_RUNTIME=proot
 Bump the tag in lockstep with `librelane-version` in `tt-gds-action`, or local
 and CI results will diverge.
 
-## Why more cores don't always help
+## Why more cores make it slower, not faster
 
-LibreLane already defaults to every core (`OPENROAD_THREADS` unset means all
-64 here). The long steps are Magic (`magic-drc`, `magic-writelef`,
-`magic-streamout`), which are single-threaded: `magic-drc` measured 455s of
-user CPU against 0s of system time, so it is genuinely compute-bound rather
-than paying proot overhead. `-j` is there to be a good neighbour on a shared
-machine, not to go faster; `-f` is what actually shortens the loop.
+The whole flow runs under **proot**, which supervises the sandboxed processes
+with `ptrace`. That supervision is a single process, and every syscall from
+every thread inside the sandbox funnels through it. It saturates one core on
+its own and becomes the ceiling for the entire run.
+
+Measured on this machine, on the same design:
+
+| `OPENROAD_THREADS` | Global placement |
+|---|---|
+| unset (LibreLane default) | ~2 min |
+| 32 | still unfinished after 30 min |
+
+In the second case OpenROAD held 64 threads at a combined 150% CPU while proot
+sat pegged at 95% of a single core: more threads meant more syscall traffic
+through the one process that could not go any faster.
+
+`-j` is therefore opt-in and off by default. It exists to *reduce* thread
+count on a busy shared machine, not to raise it. `-f` is what actually
+shortens the loop.
+
+This is also why a local run is roughly 3x slower than the same flow in CI
+despite the machine being far larger. Two earlier readings of this are worth
+correcting, because both were wrong:
+
+- LibreLane does **not** already use every core. Left unset, it passes the
+  literal string `None` through, and OpenROAD answers
+  `[WARNING ORD-0032] Invalid thread number specification: None` and drops to
+  one thread for the steps that honour the setting.
+- The slow steps are **not** simply compute-bound. `magic-drc` showing user CPU
+  but no system time proves nothing here: under `ptrace` the syscall time is
+  charged to proot, not to the traced process.
+
+For a routing-heavy design, CI remains the faster full run as well as the
+authoritative one.
