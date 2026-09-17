@@ -25,6 +25,7 @@ module protoemu_sm (
     input  wire [`PE_IW-1:0]     imem_data,
 
     input  wire [`PE_NPIN-1:0]   pin_in,     // already synchronised to clk
+    output wire [`PE_NPIN-1:0]   pin_claim,  // PINMASK, for the pin arbiter
     output wire [`PE_NPIN-1:0]   pin_out,
     output wire [`PE_NPIN-1:0]   pin_oe,
 
@@ -80,6 +81,7 @@ module protoemu_sm (
   reg                    cfg_clkidle, cfg_msbfirst, cfg_clken;
 
   assign imem_addr = pc;
+  assign pin_claim = pinmask;
   assign halted    = (st == ST_HALT);
   assign active    = (st != ST_HALT);
   assign trace     = st;

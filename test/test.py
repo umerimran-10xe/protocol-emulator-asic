@@ -692,7 +692,7 @@ async def test_random_programs_match_the_model(dut):
     host = await setup(dut)
     rng = random.Random(seed)
     top = dut.user_project.u_top
-    sm = top.u_sm
+    sm = top.g_sm[0].u_sm
 
     def mismatch(trial, cycle, model, program):
         got = (int(dut.uio_out.value), int(dut.uio_oe.value),
@@ -905,3 +905,30 @@ async def test_control_space_is_separate_from_the_program_store(dut):
         "the control write disturbed the program store"
     assert (await host.read_control(1))[0] == 7, \
         "the program write disturbed the control registers"
+
+
+@cocotb.test()
+async def test_conflict_register_reads_clean_and_is_addressed_separately(dut):
+    """The pin-conflict status register answers at its own control address.
+
+    What it reports -- which pins two machines both claimed -- is proved
+    exhaustively in formal/, because the arbiter is combinational. What formal
+    does not see is the control-space decode around it, which is what this
+    checks: the status register must not shadow a start address, and a write
+    aimed at it must not land on one.
+    """
+    CTL_CONFLICT = 8
+    host = await setup(dut)
+
+    await host.set_start_pc(machine=0, address=33)
+    assert (await host.read_control(1, addr=CTL_CONFLICT))[0] == 0, \
+        "one machine cannot contend with itself, so nothing should be reported"
+    assert (await host.read_control(1, addr=0))[0] == 33, \
+        "reading the status register disturbed the start address"
+
+    # Writing 1s clears the reported bits. With one machine there is nothing to
+    # clear, so what this really pins down is that the write stays in its lane.
+    await host.write_control([0x00FF], addr=CTL_CONFLICT)
+    assert (await host.read_control(1, addr=0))[0] == 33, \
+        "the status write landed on the start address"
+    assert (await host.read_control(1, addr=CTL_CONFLICT))[0] == 0

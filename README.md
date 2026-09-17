@@ -40,7 +40,8 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | `scripts/timing.sh` | pre-layout critical path, in seconds |
 | `docs/timing.md` | where the clock period goes, measured |
 | `docs/scaling.md` | how many state machines fit, and how deep a store |
-| `scripts/formal.sh` | SymbiYosys proofs of the state machine's safety properties |
+| `formal/` | SymbiYosys proof configurations and the non-interference miter |
+| `scripts/formal.sh` | SymbiYosys proofs: per-machine safety, pin arbitration, non-interference |
 | `scripts/harden.sh` | local RTL-to-GDS with a progress bar |
 | `info.yaml` | Tiny Tapeout project definition: tiles, pinout, top module |
 
@@ -67,20 +68,20 @@ Each rung catches what the one below it cannot, and CI stays authoritative.
 
 ## Status
 
-First working increment: one state machine executing the full instruction set,
-a 128 x 16 program store, and an SPI configuration port. 14 cocotb tests pass
-against RTL, and the design hardens cleanly.
+One state machine executing the full instruction set, a 128 x 16 program store,
+an SPI configuration port, timestamped edge capture, and the pin arbitration
+the second machine will need.
 
 | | |
 |---|---|
-| Cell area | 254,421 um2, **27.8%** of the 6x4 die (synthesis) |
-| Tests | 22 cocotb tests passing, including decoded UART and I2C traffic |
+| Cell area | 256,780 um2, **28.0%** of the 6x4 die (synthesis) |
+| Tests | 23 cocotb tests passing, including decoded UART and I2C traffic |
 | Random | randomised programs checked cycle-for-cycle against a Python model |
-| Formal | 6 safety properties proved by k-induction |
+| Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration and cross-machine non-interference at four machines |
 | Lint | clean, zero warnings |
 
-Next: timestamped edge capture, then scaling from one state machine to four.
-`docs/architecture.md` has the measured area case for both.
+Next: capture ownership and synchronisation between machines, then `PE_NSM`
+goes from 1 to 4. `docs/scaling.md` has the measured case and what is left.
 
 ## License
 

@@ -1,0 +1,18 @@
+# Cross-machine non-interference: only the owner of a pin can affect it.
+# See formal/protoemu_arb_miter.v for what the miter assumes and asserts.
+[options]
+mode bmc
+depth 1
+
+[engines]
+smtbmc yices
+
+[script]
+read_verilog -formal -I. protoemu_arb.v
+read_verilog -formal -I. protoemu_arb_miter.v
+chparam -set NSM 4 -set NPIN 8 protoemu_arb_miter
+prep -top protoemu_arb_miter
+
+[files]
+../src/protoemu_arb.v
+protoemu_arb_miter.v

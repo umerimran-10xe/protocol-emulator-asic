@@ -1,0 +1,20 @@
+# Pin arbitration proofs. The arbiter is combinational, so one BMC step already
+# covers every input combination; `prove` would add nothing over depth 1.
+#
+# NSM is overridden to 4 -- the count docs/scaling.md settled on -- so the
+# multi-machine behaviour is proved before the chip is built with more than one
+# machine.
+[options]
+mode bmc
+depth 1
+
+[engines]
+smtbmc yices
+
+[script]
+read_verilog -formal -I. protoemu_arb.v
+chparam -set NSM 4 -set NPIN 8 protoemu_arb
+prep -top protoemu_arb
+
+[files]
+../src/protoemu_arb.v

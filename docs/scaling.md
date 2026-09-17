@@ -64,15 +64,28 @@ existing SPI port between phases.
 The measurement variants were built to be structurally representative, not
 correct. Before this becomes real RTL:
 
-- **Pin arbitration.** The variants give the lowest-numbered machine priority
-  on a contested pin. Overlapping `PINMASK`s should be a program error, and the
-  formal property that a pin outside `PINMASK` is never driven needs extending
-  to cover cross-machine interference.
+- ~~**Pin arbitration.**~~ **Done.** `src/protoemu_arb.v` gives each pin to the
+  lowest-numbered machine that claims it, and only to that machine. Overlapping
+  `PINMASK`s are reported to the host in control register 8 rather than
+  silently resolved. The formal property has been extended the way this asked:
+  `formal/protoemu_arb_miter.v` proves cross-machine non-interference at four
+  machines, as a two-copy miter. `docs/architecture.md` has the properties.
 - **Capture ownership.** The variants let any machine arm and pop the shared
-  FIFO, which races. Either give capture to one machine, or give each its own
-  read pointer into a shared record.
+  FIFO, which races. Capture is currently wired to machine 0 alone, which is
+  correct but wasteful — three machines cannot measure anything. The real fix is
+  a read pointer per machine into one shared record, so they share the edges
+  without sharing the pop.
 - **Synchronisation between machines.** `SYS SYNC` currently re-anchors one
   machine's deadline. A barrier across machines is what full-duplex protocols
   will actually want.
 - **The reference model** needs to become multi-machine alongside the RTL, or
   the randomised comparison stops covering the interesting part.
+
+`PE_NSM` stays at 1 until those land. The machine array and the arbiter are
+already in place and parameterised, so flipping it is a one-line change to
+`src/protoemu_isa.vh` — but flipping it before capture and synchronisation are
+designed would ship three machines that cannot measure or coordinate.
+
+The arbitration work cost **722 um2**, 0.28% of the 6x4 die: 27.9% to 28.0%
+at synthesis, with pre-layout slack unchanged (-12.90 ns to -12.73 ns, inside
+the noise between runs).

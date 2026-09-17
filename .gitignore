@@ -13,3 +13,5 @@ test/results.xml
 test/gate_level_netlist.v
 /tt
 formal/protoemu_sm/
+formal/protoemu_arb/
+formal/protoemu_arb_miter/
