@@ -17,6 +17,7 @@
  *
  * Control registers:
  *   0..PE_NSM-1  start address for each state machine
+ *   8            pins claimed by more than one machine; write 1 to clear
  *
  * Every machine shares one program store, so without distinct start addresses
  * they would all execute the same instructions in lockstep.
@@ -45,7 +46,8 @@ module protoemu_cfg (
     input  wire [`PE_IW-1:0]    imem_rdata,
 
     output reg                  ctl_we,
-    output reg  [7:0]           ctl_addr,
+    output reg  [7:0]           ctl_addr,     // held with ctl_we, for writes
+    output wire [7:0]           ctl_raddr,    // live pointer, for readback
     output reg  [`PE_IW-1:0]    ctl_wdata,
     input  wire [`PE_IW-1:0]    ctl_rdata
 );
@@ -66,7 +68,11 @@ module protoemu_cfg (
   reg [`PE_IW-1:0] outsh;  // outbound shift register
   reg [7:0]  addr;         // auto-incrementing word pointer
 
+  // Readback is addressed by the live pointer, not by ctl_addr: ctl_addr is
+  // the write strobe's copy and only moves on a write, so a read burst that
+  // followed a write to a different register would answer from the wrong one.
   assign imem_raddr = addr[`PE_PC_W-1:0];
+  assign ctl_raddr  = addr;
 
   always @(posedge clk) begin
     if (!rst_n) begin

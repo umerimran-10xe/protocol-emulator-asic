@@ -87,10 +87,13 @@ if the program store needs to be deeper.
 Half the judging criteria, so it was designed up front rather than bolted on.
 Two of the four layers are running.
 
-**Formal (SymbiYosys + Yices) — running.** `./scripts/formal.sh` proves the
-following by k-induction, so they hold in every reachable state rather than
-just the first few cycles. The properties live in an `ifdef FORMAL` block at
-the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
+**Formal (SymbiYosys + Yices) — running.** `./scripts/formal.sh` runs three
+tasks.
+
+`protoemu_sm` proves the per-machine properties by k-induction, so they hold in
+every reachable state rather than just the first few cycles. They live in an
+`ifdef FORMAL` block at the bottom of `src/protoemu_sm.v`, next to the logic
+they constrain.
 
 | Property | Why it matters |
 |---|---|
@@ -101,12 +104,41 @@ the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 | An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
 | Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-**Directed tests (cocotb) — running.** 20 tests in `test/test.py`, written
+`protoemu_arb` proves the pin arbiter. It is combinational, so one BMC step is
+already exhaustive over its entire input space — there is nothing a directed
+test could add on top.
+
+| Property | Why it matters |
+|---|---|
+| A pin no machine claims is released, and reads 0 | An unowned pin does not carry a machine's internal `PINVAL` to the pad |
+| What a pin shows is its owner's request, unchanged | Arbitration must not alter the winner's output, only choose it |
+| `conflict` is exactly "claimed by more than one machine" | It is reported to the host as a program error, so a missed or false overlap is as bad as the fight itself |
+
+`protoemu_arb_miter` proves **cross-machine non-interference**, which is the
+property the per-machine proof cannot see. Two copies of the arbiter get the
+same claims but independently chosen drive requests, with only the *owner* of
+each pin assumed to ask for the same thing in both. The assertion is that the
+pins still come out identical — so nothing a non-owner does can reach any pin
+it does not own, for every combination of programs rather than the ones a test
+happened to run. Ownership is restated in the miter from the claims rather than
+taken from the arbiter's own priority chain, so a bug in that chain cannot make
+the proof agree with itself.
+
+Both arbiter tasks are run at **four** machines, the count `docs/scaling.md`
+settled on, while the chip is still built with one: the multi-machine behaviour
+is proved before it is instantiated.
+
+All three tasks were mutation-checked rather than merely observed to pass —
+dropping the priority term, merging drive enables instead of selecting them,
+and suppressing the conflict report each make them fail.
+
+**Directed tests (cocotb) — running.** 23 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
-clock, counted loops, run/step control, and a cross-check that the assembler
-and the Verilog header agree on all 46 ISA constants.
+clock, counted loops, run/step control, per-machine start addresses, the
+control-register decode, and a cross-check that the assembler and the Verilog
+header agree on all 46 ISA constants.
 
 **Constrained-random — running.** `test/protoemu_model.py` is a cycle-accurate
 Python model of the state machine, written from the RTL and deliberately
@@ -200,9 +232,11 @@ Nothing else stalls, so a program's timing is readable from its source.
 | Module | Role |
 |---|---|
 | `src/protoemu_sm.v` | fetch, decode and execute; pin drive with per-pin open-drain |
-| `src/protoemu_imem.v` | 128 x 16 program store, one write port, two read ports |
-| `src/protoemu_cfg.v` | SPI slave: load and read back the program store |
-| `src/protoemu_top.v` | cycle counter, input synchronisers, run/step control |
+| `src/protoemu_arb.v` | pin ownership between machines, and conflict reporting |
+| `src/protoemu_imem.v` | 128 x 16 program store, one write port, one fetch port per machine |
+| `src/protoemu_capture.v` | timestamped edge capture into a 16-entry FIFO |
+| `src/protoemu_cfg.v` | SPI slave: load and read back the program store and control registers |
+| `src/protoemu_top.v` | cycle counter, input synchronisers, run/step control, the machine array |
 | `src/protoemu_isa.vh` | the encoding, shared by hardware and assembler |
 | `test/protoemu_asm.py` | assembler, so programs are written in mnemonics |
 

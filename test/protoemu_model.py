@@ -60,8 +60,16 @@ class ProtoEmu:
     # ------------------------------------------------------------ outputs --
     @property
     def pin_out(self):
+        """What reaches the pad, after arbitration.
+
+        A pin this machine does not claim reads 0 rather than whatever PINVAL
+        happens to hold: src/protoemu_arb.v gates each machine's request with
+        its ownership of the pin, so an unowned pin is released *and* quiet.
+        """
         out = 0
         for i in range(NPIN):
+            if not _bit(self.pinmask, i):
+                continue
             out = _set_bit(out, i, 0 if _bit(self.drivemode, i) else _bit(self.pinval, i))
         return out
 

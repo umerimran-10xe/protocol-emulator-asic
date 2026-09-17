@@ -62,8 +62,9 @@ This design targets the IHP CMOS5L 130nm process at 6x4 tiles
 2. Raise `run` to start execution.
 3. Attach the protocol pins `pio[7:0]` to the device under test.
 
-`run` doubles as the restart control: a 0 to 1 transition resets the program
-counter to zero and clears the cycle counter, so every run starts identically.
+`run` doubles as the restart control: a 0 to 1 transition returns each machine
+to its configured start address and clears the cycle counter, so every run
+starts identically.
 While `run` is low the machine is frozen, and each pulse on `step` advances it
 one cycle -- enough to single-step a program on the bench.
 
@@ -71,7 +72,9 @@ The configuration frame is a 16-bit header — bit 15 set to read, bit 14 to
 reach the control registers rather than the program store, and bits 7:0 the
 start address — followed by 16-bit words with the address auto-incrementing, so
 a whole program loads in one chip-select. Control register *n* holds the
-address machine *n* starts from.
+address machine *n* starts from; control register 8 reads back any pin that
+more than one machine claimed, which is a program error, and clears the bits
+written to it.
 
 For a UART loopback smoke test, load the UART program, tie `pio[0]` (TX) to
 `pio[1]` (RX), and check that transmitted bytes come back.

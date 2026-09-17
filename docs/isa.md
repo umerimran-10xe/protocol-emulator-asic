@@ -18,9 +18,10 @@ A 16-bit header, then 16-bit words with the address auto-incrementing:
 
 Control registers:
 
-| Address | Register |
-|---|---|
-| `0 .. NSM-1` | start address for each state machine |
+| Address | Register | Access |
+|---|---|---|
+| `0 .. NSM-1` | start address for each state machine | read/write |
+| `8` | pins claimed by more than one machine | read; write 1 to clear |
 
 Every machine reads the same program store, so without distinct start addresses
 they would all execute the same instructions in lockstep. A machine begins at
@@ -28,6 +29,24 @@ its start address on each rising edge of `run`.
 
 The header is 16 bits rather than 8 so the space-select bit does not have to
 compete with the program address, which grows with the store.
+
+## Pin ownership
+
+A pin belongs to the **lowest-numbered machine whose `PINMASK` claims it**, and
+only to that machine. A machine that does not own a pin cannot affect it, and a
+pin no machine claims is released and reads back 0 rather than carrying whatever
+the machine's `PINVAL` happened to hold.
+
+Two machines claiming the same pin is a program error. It is still resolved the
+same way every time -- letting them fight would be worse -- and every overlap is
+latched into control register 8, so the host can read back which pins collided
+instead of inferring it from a scope. The register clears on each rising edge of
+`run`, and writing a 1 to a bit clears that bit.
+
+Both halves of this are proved rather than tested: `src/protoemu_sm.v` proves a
+machine never drives outside its own `PINMASK`, and
+`formal/protoemu_arb_miter.v` proves that nothing a non-owner does can reach a
+pin it does not own.
 
 ## Machine state
 

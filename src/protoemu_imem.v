@@ -2,26 +2,32 @@
  * Copyright (c) 2026 Umer Imran
  * SPDX-License-Identifier: Apache-2.0
  *
- * Program store: 128 x 16 bits in flip-flops, one synchronous write port and
- * two combinational read ports (the state machine's fetch, and SPI readback).
+ * Program store: 128 x 16 bits in flip-flops, one synchronous write port, one
+ * combinational fetch port per state machine, and one more for SPI readback.
  *
  * Flops rather than an SRAM macro: docs/area-budget.md measures this at 11% of
  * the 6x4 die, which is cheaper overall than a macro's placement and routing
  * halo at this size, and it keeps the flow macro-free.
+ *
+ * The fetch ports sit in parallel rather than in series, which is why
+ * docs/scaling.md measures a second machine as costing nothing in timing.
  */
 
 `default_nettype none
 `include "protoemu_isa.vh"
 
-module protoemu_imem (
+module protoemu_imem #(
+    parameter NRD = 1                       // fetch ports, one per machine
+) (
     input  wire                 clk,
     input  wire                 we,
     input  wire [`PE_PC_W-1:0]  waddr,
     input  wire [`PE_IW-1:0]    wdata,
 
-    input  wire [`PE_PC_W-1:0]  raddr0,
-    output wire [`PE_IW-1:0]    rdata0,
-    input  wire [`PE_PC_W-1:0]  raddr1,
+    input  wire [NRD*`PE_PC_W-1:0] raddr,   // machine fetch
+    output wire [NRD*`PE_IW-1:0]   rdata,
+
+    input  wire [`PE_PC_W-1:0]  raddr1,     // SPI readback
     output wire [`PE_IW-1:0]    rdata1
 );
 
@@ -32,7 +38,13 @@ module protoemu_imem (
   always @(posedge clk)
     if (we) mem[waddr] <= wdata;
 
-  assign rdata0 = mem[raddr0];
+  genvar r;
+  generate
+    for (r = 0; r < NRD; r = r + 1) begin : g_rd
+      assign rdata[r*`PE_IW +: `PE_IW] = mem[raddr[r*`PE_PC_W +: `PE_PC_W]];
+    end
+  endgenerate
+
   assign rdata1 = mem[raddr1];
 
 endmodule
