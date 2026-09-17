@@ -182,6 +182,11 @@ never wrote. It emits the whole instruction set, capture and barriers included.
 
     PROTOEMU_TRIALS=250 PROTOEMU_SEED=0x5EED make   # deeper soak
 
+This one test skips in gate-level simulation. It reads `pin_s1`, the cycle
+counter and the machine's registers by name — to feed the model and to say
+which register diverged — and none of those names survive synthesis. Every
+other test looks only at the pins and runs against the netlist unchanged.
+
 The default of 20 programs keeps the suite a few seconds; the soak is for
 before a merge that touches the datapath.
 
