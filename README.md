@@ -37,6 +37,8 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | `docs/info.md` | datasheet source |
 | `scripts/lint.sh` | the same Verilator lint CI runs, in milliseconds |
 | `scripts/area.sh` | fast local area check against the 6x4 budget |
+| `scripts/timing.sh` | pre-layout critical path, in seconds |
+| `docs/timing.md` | where the clock period goes, measured |
 | `scripts/formal.sh` | SymbiYosys proofs of the state machine's safety properties |
 | `scripts/harden.sh` | local RTL-to-GDS with a progress bar |
 | `info.yaml` | Tiny Tapeout project definition: tiles, pinout, top module |
