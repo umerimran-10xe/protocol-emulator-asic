@@ -1,0 +1,9 @@
+# running in protoemu_barrier/src/
+read_verilog -formal -I. protoemu_barrier.v
+chparam -set NSM 4 protoemu_barrier
+prep -top protoemu_barrier
+
+hierarchy -smtcheck
+rename -witness
+write_jny -no-connections ../model/design.json
+write_rtlil ../model/design.il

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-09-17T21:11:22" hostname="apollo" package="protoemu_barrier" id="0" name="default" tests="40" errors="0" failures="0" time="0" skipped="0">
+<properties>
+<property name="os" value="Linux"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="PASS"/>
+</properties>
+<testcase classname="default" name="build execution" time="0">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:57.31-57.47" time="0" type="ASSERT" location="protoemu_barrier.v:57.31-57.47" id="_witness_.check_assert_protoemu_barrier_v_57_133">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:57.31-57.47" time="0" type="ASSERT" location="protoemu_barrier.v:57.31-57.47" id="_witness_.check_assert_protoemu_barrier_v_57_181">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:57.31-57.47" time="0" type="ASSERT" location="protoemu_barrier.v:57.31-57.47" id="_witness_.check_assert_protoemu_barrier_v_57_37">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:57.31-57.47" time="0" type="ASSERT" location="protoemu_barrier.v:57.31-57.47" id="_witness_.check_assert_protoemu_barrier_v_57_85">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_100">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_136">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_140">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_144">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_148">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_184">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_188">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_192">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_196">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_40">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_44">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_48">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_52">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_88">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_92">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:62.44-62.74" time="0" type="ASSERT" location="protoemu_barrier.v:62.44-62.74" id="_witness_.check_assert_protoemu_barrier_v_62_96">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:70.11-70.26" time="0" type="ASSERT" location="protoemu_barrier.v:70.11-70.26" id="_witness_.check_assert_protoemu_barrier_v_70_107">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:70.11-70.26" time="0" type="ASSERT" location="protoemu_barrier.v:70.11-70.26" id="_witness_.check_assert_protoemu_barrier_v_70_155">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:70.11-70.26" time="0" type="ASSERT" location="protoemu_barrier.v:70.11-70.26" id="_witness_.check_assert_protoemu_barrier_v_70_203">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:70.11-70.26" time="0" type="ASSERT" location="protoemu_barrier.v:70.11-70.26" id="_witness_.check_assert_protoemu_barrier_v_70_59">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_112">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_118">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_124">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_130">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_160">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_166">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_172">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_178">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_208">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_214">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_220">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_226">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_64">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_70">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_76">
+</testcase>
+<testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_82">
+</testcase>
+<system-out>SBY 21:11:22 [protoemu_barrier] Removing directory '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier'.
+SBY 21:11:22 [protoemu_barrier] Copy '/home/umar_imran/Music/asic_comp/formal/../src/protoemu_barrier.v' to '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier/src/protoemu_barrier.v'.
+SBY 21:11:22 [protoemu_barrier] engine_0: smtbmc yices
+SBY 21:11:22 [protoemu_barrier] base: starting process &quot;cd protoemu_barrier/src; yosys -ql ../model/design.log ../model/design.ys&quot;
+SBY 21:11:22 [protoemu_barrier] base: finished (returncode=0)
+SBY 21:11:22 [protoemu_barrier] prep: starting process &quot;cd protoemu_barrier/model; yosys -ql design_prep.log design_prep.ys&quot;
+SBY 21:11:22 [protoemu_barrier] prep: finished (returncode=0)
+SBY 21:11:22 [protoemu_barrier] smt2: starting process &quot;cd protoemu_barrier/model; yosys -ql design_smt2.log design_smt2.ys&quot;
+SBY 21:11:22 [protoemu_barrier] smt2: finished (returncode=0)
+SBY 21:11:22 [protoemu_barrier] engine_0: starting process &quot;cd protoemu_barrier; yosys-smtbmc -s yices --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2&quot;
+SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Solver: yices
+SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Status: passed
+SBY 21:11:22 [protoemu_barrier] engine_0: finished (returncode=0)
+SBY 21:11:22 [protoemu_barrier] engine_0: Status returned by engine: pass
+SBY 21:11:22 [protoemu_barrier] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 21:11:22 [protoemu_barrier] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 21:11:22 [protoemu_barrier] summary: engine_0 (smtbmc yices) returned pass
+SBY 21:11:22 [protoemu_barrier] summary: engine_0 did not produce any traces
+SBY 21:11:22 [protoemu_barrier] DONE (PASS, rc=0)
+</system-out>
+<system-err>
+</system-err>
+</testsuite>
+</testsuites>

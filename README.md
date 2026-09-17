@@ -41,7 +41,7 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | `docs/timing.md` | where the clock period goes, measured |
 | `docs/scaling.md` | how many state machines fit, and how deep a store |
 | `formal/` | SymbiYosys proof configurations and the non-interference miter |
-| `scripts/formal.sh` | SymbiYosys proofs: per-machine safety, pin arbitration, non-interference |
+| `scripts/formal.sh` | SymbiYosys proofs: per-machine safety, pin arbitration, non-interference, rendezvous |
 | `scripts/harden.sh` | local RTL-to-GDS with a progress bar |
 | `info.yaml` | Tiny Tapeout project definition: tiles, pinout, top module |
 
@@ -69,20 +69,20 @@ Each rung catches what the one below it cannot, and CI stays authoritative.
 ## Status
 
 One state machine executing the full instruction set, a 128 x 16 program store,
-an SPI configuration port, timestamped edge capture, and the pin arbitration and
-capture ownership the other three machines will need.
+an SPI configuration port, timestamped edge capture, and the pin arbitration,
+capture ownership and rendezvous the other three machines will need.
 
 | | |
 |---|---|
 | Cell area | 256,780 um2, **28.0%** of the 6x4 die (synthesis) |
-| Tests | 24 cocotb tests passing, including decoded UART and I2C traffic |
+| Tests | 25 cocotb tests passing, including decoded UART and I2C traffic |
 | Random | randomised programs checked cycle-for-cycle against a Python model |
-| Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration and cross-machine non-interference at four machines |
+| Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines |
 | Lint | clean, zero warnings |
 
-Next: synchronisation between machines and a multi-machine reference model,
-then `PE_NSM` goes from 1 to 4. Measured on the real RTL, four machines with a
-64-entry store come to 30.3% at synthesis with positive pre-layout slack;
+Next: a multi-machine reference model, then `PE_NSM` goes from 1 to 4. Measured
+on the real RTL, four machines with a 64-entry store come to 30.4% at synthesis
+with positive pre-layout slack;
 `docs/scaling.md` has the numbers and what is left.
 
 ## License

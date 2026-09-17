@@ -659,8 +659,16 @@ def _random_program(rng, length):
         elif pick == 8:
             program.append(A.LOAD(rng.randrange(8), rng.randrange(256)))
         else:
-            program.append(A.SYS(rng.choice([A.SYS_NOP, A.SYS_SYNC, A.SYS_CLRFAULT]),
-                                 rng.randrange(4)))
+            pick_sys = rng.randrange(4)
+            if pick_sys == 3:
+                # A barrier naming any set of machines still releases with one
+                # machine built, so it belongs in the random stream: the model
+                # has to agree about the cycle it costs.
+                program.append(A.BARRIER(rng.randrange(16)))
+            else:
+                program.append(A.SYS(rng.choice([A.SYS_NOP, A.SYS_SYNC,
+                                                 A.SYS_CLRFAULT]),
+                                     rng.randrange(4)))
     # Falling off the end must halt rather than run into whatever the previous
     # program left in the store: the loader only writes as many words as this
     # program has, so everything past it is stale, and the model cannot know
@@ -987,3 +995,33 @@ async def test_reading_the_capture_window_does_not_make_room(dut):
 
     assert (int(dut.uo_out.value) >> CAP_OVERFLOW) & 1 == 1, \
         "the four pops made room, so the window still behaves like a FIFO"
+
+
+@cocotb.test()
+async def test_a_barrier_with_nobody_else_to_wait_for_still_releases(dut):
+    """A barrier never hangs a machine on participants that cannot arrive.
+
+    With one machine built, a mask naming machines 1 to 3 has nothing behind it,
+    and a mask naming machine 0 is the machine itself. Both must release, or a
+    program assembled for four machines would wedge the moment it ran on one --
+    and the encoding is deliberately the same either way.
+
+    The interesting case, several machines leaving on the same cycle, needs more
+    than one machine and is proved exhaustively in formal/protoemu_barrier.sby.
+    """
+    host = await setup(dut)
+
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0xFF),
+        A.BARRIER(0b0001),             # itself
+        A.SET(0x0F, 0),
+        A.BARRIER(0b1110),             # three machines that were never built
+        A.SET(0xF0, 0),
+        A.BARRIER(0b0000),             # nobody at all
+        A.SYS(A.SYS_HALT),
+    ])
+    await host.start()
+    await host.run_until_halt(limit=200)
+
+    assert int(dut.uio_out.value) == 0xF0, (
+        f"the program ran past all three barriers but left {int(dut.uio_out.value):#04x}")

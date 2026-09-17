@@ -22,6 +22,7 @@ project:
     - "protoemu_top.v"
     - "protoemu_sm.v"
     - "protoemu_arb.v"
+    - "protoemu_barrier.v"
     - "protoemu_cfg.v"
     - "protoemu_imem.v"
     - "protoemu_capture.v"

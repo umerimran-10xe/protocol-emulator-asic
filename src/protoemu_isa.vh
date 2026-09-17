@@ -72,6 +72,12 @@
 `define PE_SYS_CLRFAULT 3'd4
 `define PE_SYS_CAPARM   3'd5  // arm edge capture; arg[7:0] selects the pins
 `define PE_SYS_CAPPOP   3'd6  // X <- captured pin state, SHIFT <- its timestamp
+`define PE_SYS_BARRIER  3'd7  // wait until every machine in arg[3:0] is here too
+
+// ------------------------------------------------------------- barrier ----
+// Width of the participant mask in a SYS BARRIER. Fixed by the encoding, not
+// by PE_NSM, so a program assembled for four machines still decodes on one.
+`define PE_BAR_W        4
 
 // ------------------------------------------------------------- capture ----
 `define PE_NSM          1     // state machines sharing the store and pins

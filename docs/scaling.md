@@ -99,18 +99,22 @@ correct. Before this becomes real RTL:
   reported in control register 9. The cost is that reading no longer makes room
   — the window holds the first 16 edges after each arm — which is what having
   several independent cursors buys.
-- **Synchronisation between machines.** `SYS SYNC` currently re-anchors one
-  machine's deadline. A barrier across machines is what full-duplex protocols
-  will actually want.
+- ~~**Synchronisation between machines.**~~ **Done.** `SYS BARRIER` stops a
+  machine until every machine it names is also at a barrier, and releases all of
+  them on the same cycle — which is what a transmitter and a receiver on
+  separate machines need. A halted machine counts as arrived, so finishing early
+  does not wedge the rest. `src/protoemu_barrier.v` carries the proofs.
 - **The reference model** needs to become multi-machine alongside the RTL, or
   the randomised comparison stops covering the interesting part.
 
-`PE_NSM` stays at 1 until those land. The machine array and the arbiter are
+`PE_NSM` stays at 1 until the reference model lands. The machine array and the arbiter are
 already in place and parameterised, so flipping it is a one-line change to
-`src/protoemu_isa.vh` — but flipping it before capture and synchronisation are
-designed would ship three machines that cannot measure or coordinate.
+`src/protoemu_isa.vh` — but flipping it before the randomised
+comparison understands more than one machine would ship the interesting part
+unchecked.
 
-Pin arbitration cost **722 um2** and capture ownership a further **140 um2** at
-one machine — 0.33% of the 6x4 die between them, 27.9% to 28.0% at synthesis,
-with pre-layout slack unchanged. The cursors only really cost anything once
-there are four of them, which is what the re-measured table above prices.
+Pin arbitration, capture ownership and the barrier together moved one machine
+from 27.9% to 28.0% at synthesis, and four machines with a 64-entry store from
+30.3% to **30.4%**, with pre-layout slack still met at +5.03 ns. The barrier is
+a handful of gates per machine; what costs real area at four machines is the
+fetch ports and the read cursors, which the re-measured table above prices.

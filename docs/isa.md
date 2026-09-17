@@ -49,6 +49,31 @@ machine never drives outside its own `PINMASK`, and
 `formal/protoemu_arb_miter.v` proves that nothing a non-owner does can reach a
 pin it does not own.
 
+## Rendezvous between machines
+
+`SYS BARRIER machines` stops until every machine named in `arg[3:0]` is also
+stopped at a barrier, and then **every one of them leaves on the same cycle**.
+That is the point of it. `SYS SYNC` re-anchors one machine's deadline against
+the shared cycle counter, which is enough to keep a single machine's timing from
+drifting, but it cannot make a transmitter and a receiver on separate machines
+start a transfer on the same edge. A barrier can.
+
+A **halted machine counts as arrived.** One machine finishing its part of a
+protocol would otherwise wedge every machine still waiting on it, and the usual
+alternative -- a timeout -- turns a program bug into a silent timing glitch
+instead of a hang. A machine that is running but never reaches the barrier does
+hang the others, but that is an infinite loop, and nothing here can fix one.
+
+The mask is four bits however many machines are built, so a program assembled
+for four machines runs unchanged on one: naming a machine that does not exist
+drops out of the mask, and the barrier releases rather than waiting for someone
+who can never come.
+
+`formal/protoemu_barrier.sby` proves the four properties this rests on --
+nobody leaves a barrier they are not at, nobody leaves before every participant
+has arrived or halted, nobody is left waiting once its participants are all
+there, and two machines waiting on the same set leave together.
+
 ## Capture ownership
 
 There is one record of the captured edges and **one read cursor per machine**.
@@ -167,7 +192,8 @@ received byte onto the pins in one cycle, without serialising it.
 
 `0` no-op, `1` halt, `2` pulse `irq` (and halt if `arg[0]`),
 `3` `TGT = cycle` (re-anchor the deadline to now), `4` clear `FAULT`,
-`5` arm edge capture on the pins in `arg[7:0]`, `6` pop a captured entry.
+`5` arm edge capture on the pins in `arg[7:0]`, `6` pop a captured entry,
+`7` wait at a barrier for the machines in `arg[3:0]`.
 
 A halted machine holds its pins and stops fetching until the next `run` edge.
 

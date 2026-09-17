@@ -26,7 +26,9 @@ WP_LOW, WP_HIGH, WP_RISE, WP_FALL = range(4)
 
 # SYS functions
 (SYS_NOP, SYS_HALT, SYS_IRQ, SYS_SYNC, SYS_CLRFAULT,
- SYS_CAPARM, SYS_CAPPOP) = range(7)
+ SYS_CAPARM, SYS_CAPPOP, SYS_BARRIER) = range(8)
+
+BAR_W = 4
 
 PC_W = 7
 IMEM_DEPTH = 1 << PC_W
@@ -83,6 +85,16 @@ def CAPARM(mask):
     """Arm edge capture on the pins in `mask`, discarding anything captured
     before. SYS CAPPOP then reads entries out, oldest first."""
     return SYS(SYS_CAPARM, _fit("mask", mask, 8))
+
+
+def BARRIER(machines):
+    """Stop until every machine in `machines` is also stopped at a barrier.
+
+    All of them leave on the same cycle, which is what lets a transmitter and a
+    receiver on separate machines start a transfer on the same edge. A halted
+    machine counts as arrived, so finishing early does not wedge the rest.
+    """
+    return SYS(SYS_BARRIER, _fit("machines", machines, BAR_W))
 
 
 def shiftcfg(clkpin=0, clkidle=0, msbfirst=1, clken=0):
