@@ -154,11 +154,18 @@ cell area, 24.0% of the 6x4 die**, of which 51% is sequential.
 combinational read port per machine costs roughly 35,000 um2 per extra port --
 about 3.8% of the die each.
 
-**Four state machines fit.** Each additional machine costs one read port plus
-its own ~250 bits of state, measured at about 5% of the die. Four machines land
-near 40% of cell area against LibreLane's 60% density target, so the flexible
-option is also the affordable one. The build order is still 1 -> 2 -> 4, with
-`area.sh` and a hardening run gating each step rather than a single jump.
+**Four state machines fit, but only with a shallower store.** This section
+originally said four machines land near 40% and were comfortable. That was a
+synthesis number, before the 1.40x post-layout ratio was measured. Redone
+properly in `docs/scaling.md`: four machines with the current 128-entry store
+land at **~61%**, over the 60% density target. Four machines with a **64-entry**
+store land at ~39.6% — the same silicon as the single machine built today — and
+additionally swing pre-layout slack from -13.67 ns to +3.58 ns, because the
+store's read mux and the PC fanout driving it are the critical path.
+
+The decision is therefore four machines with a 64-entry shared store: four
+machines *or* a 128-instruction program, not both. A second machine on its own
+costs 5.2% of the die and nothing in timing.
 
 **Timestamped edge capture earns its place — and cost more than estimated.**
 It is built. The estimate here was 320 bits for `{pin[2:0], timestamp, dir}`,
