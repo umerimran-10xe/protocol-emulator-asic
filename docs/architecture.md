@@ -145,7 +145,7 @@ All three tasks were mutation-checked rather than merely observed to pass —
 dropping the priority term, merging drive enables instead of selecting them,
 and suppressing the conflict report each make them fail.
 
-**Directed tests (cocotb) — running.** 25 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 26 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
@@ -155,17 +155,30 @@ filling, barriers that name machines which were never built, and a cross-check t
 all 46 ISA constants.
 
 **Constrained-random — running.** `test/protoemu_model.py` is a cycle-accurate
-Python model of the state machine, written from the RTL and deliberately
-mirroring its structure: one `step()` is one clock, every read takes the
-pre-state, and the variables carry the register names, so a mismatch report
-names the register that diverged.
+Python model, written from the RTL and deliberately mirroring its structure: one
+`step()` is one clock, every read takes the pre-state, and the variables carry
+the register names, so a mismatch report names the register that diverged.
+
+It models the **chip**, not one machine. `Machine` is `protoemu_sm.v`;
+`ProtoEmu` is the shared program store and cycle counter, the pin arbitration,
+the rendezvous, and the one capture record with a cursor per machine. Anything
+shared lives on the chip, which is what lets the model say something at four
+machines rather than one. Within a step every machine is stepped from a snapshot
+of the pre-state, because that is what a clock edge does.
+
+The strobes are modelled as registers rather than as immediate effects, which
+matters more than it sounds: `cap_arm` and `cap_pop` are registered in
+`protoemu_sm.v`, so the entry a machine reads and whether one is ready still
+reflect the state from before. Getting that wrong made `JMP CAPRDY` branch a
+cycle early — a divergence a 400-program soak found on trial 167 once capture
+instructions joined the random stream.
 
 `test_random_programs_match_the_model` runs randomised instruction streams
 through the RTL and the model in lockstep and compares the pins every cycle.
 The generator is weighted rather than uniform -- uniform 16-bit words are
 mostly long waits and immediate halts, which exercises nothing -- and branches
 are confined inside the program so control cannot reach an address the loader
-never wrote.
+never wrote. It emits the whole instruction set, capture and barriers included.
 
     PROTOEMU_TRIALS=250 PROTOEMU_SEED=0x5EED make   # deeper soak
 

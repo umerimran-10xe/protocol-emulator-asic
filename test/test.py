@@ -653,14 +653,21 @@ def _random_program(rng, length):
         elif pick == 6 and len(program) > 3:
             # Branch strictly inside the program, so control can never reach an
             # address the loader did not write.
-            program.append(A.JMP(rng.randrange(7), rng.randrange(3, len(program))))
+            program.append(A.JMP(rng.randrange(8), rng.randrange(3, len(program))))
         elif pick == 7:
             program.append(A.ALU(rng.randrange(13), rng.randrange(256)))
         elif pick == 8:
             program.append(A.LOAD(rng.randrange(8), rng.randrange(256)))
         else:
-            pick_sys = rng.randrange(4)
-            if pick_sys == 3:
+            pick_sys = rng.randrange(6)
+            if pick_sys == 4:
+                # Arming and popping belong in the stream too: the cursor, the
+                # registered strobes and the fixed window are all things the
+                # model has to get right cycle for cycle.
+                program.append(A.CAPARM(rng.randrange(256)))
+            elif pick_sys == 5:
+                program.append(A.SYS(A.SYS_CAPPOP))
+            elif pick_sys == 3:
                 # A barrier naming any set of machines still releases with one
                 # machine built, so it belongs in the random stream: the model
                 # has to agree about the cycle it costs.
@@ -703,6 +710,7 @@ async def test_random_programs_match_the_model(dut):
     sm = top.g_sm[0].u_sm
 
     def mismatch(trial, cycle, model, program):
+        m0 = model.machines[0]
         got = (int(dut.uio_out.value), int(dut.uio_oe.value),
                (int(dut.uo_out.value) >> HALTED) & 1)
         want = (model.pin_out, model.pin_oe, int(model.halted))
@@ -715,9 +723,9 @@ async def test_random_programs_match_the_model(dut):
             f"  RTL   pc={int(sm.pc.value)} st={int(sm.st.value)} "
             f"pinval={int(sm.pinval.value):#04x} pinmask={int(sm.pinmask.value):#04x} "
             f"drivemode={int(sm.drivemode.value):#04x} shreg={int(sm.shreg.value):#06x}\n"
-            f"  model pc={model.pc} st={model.st} "
-            f"pinval={model.pinval:#04x} pinmask={model.pinmask:#04x} "
-            f"drivemode={model.drivemode:#04x} shreg={model.shreg:#06x}\n"
+            f"  model pc={m0.pc} st={m0.st} "
+            f"pinval={m0.pinval:#04x} pinmask={m0.pinmask:#04x} "
+            f"drivemode={m0.drivemode:#04x} shreg={m0.shreg:#06x}\n"
             f"  program {[hex(w) for w in program]}")
 
     for trial in range(trials):
@@ -1025,3 +1033,54 @@ async def test_a_barrier_with_nobody_else_to_wait_for_still_releases(dut):
 
     assert int(dut.uio_out.value) == 0xF0, (
         f"the program ran past all three barriers but left {int(dut.uio_out.value):#04x}")
+
+
+@cocotb.test()
+async def test_the_model_arbitrates_and_synchronises_four_machines(dut):
+    """The reference model at four machines, checked without the RTL.
+
+    `PE_NSM` is still 1, so the randomised comparison above cannot reach the
+    parts of the model that only exist once machines share the pins. This drives
+    the model on its own: two machines with overlapping `PINMASK`s, and a
+    barrier one of them reaches long before the other. When `PE_NSM` becomes 4
+    the same behaviour gets compared against the RTL; until then this is what
+    stops the multi-machine model rotting.
+    """
+    import protoemu_model as PM
+
+    program = [0] * 16
+    program[0:5] = [                      # machine 0, from address 0
+        A.LOAD(A.REG_PINMASK, 0x0F),
+        A.SET(0x0F, 0),
+        A.BARRIER(0b0011),
+        A.SET(0x05, 0),
+        A.SYS(A.SYS_HALT)]
+    program[8:13] = [                     # machine 1, from address 8
+        A.LOAD(A.REG_PINMASK, 0x3C),      # 0x0C of it is machine 0's already
+        A.WAITU(30),
+        A.BARRIER(0b0011),
+        A.SET(0xFF, 0),
+        A.SYS(A.SYS_HALT)]
+    program[13:15] = [                    # machines 2 and 3: claim nothing
+        A.LOAD(A.REG_PINMASK, 0x00),
+        A.SYS(A.SYS_HALT)]
+
+    # Machines 2 and 3 halt at once. They are here to be named by nobody's
+    # barrier mask and still not hold it up.
+    chip = PM.ProtoEmu(program, nsm=4, start_pc=[0, 8, 13, 13])
+    left = {}
+    for cycle in range(200):
+        before = [m.at_barrier for m in chip.machines]
+        chip.step(0, cycle)
+        for i, (was, m) in enumerate(zip(before, chip.machines)):
+            if was and not m.at_barrier and i not in left:
+                left[i] = cycle
+        if chip.halted:
+            break
+
+    assert chip.halted, "the model never finished"
+    assert chip.conflict == 0x0C, (
+        f"pins 2 and 3 are claimed twice, so conflict should be 0x0c, got {chip.conflict:#04x}")
+    assert left.get(0) == left.get(1) is not None, (
+        f"machines 0 and 1 must leave the barrier together, left at {left}")
+    dut._log.info(f"four modelled machines met at cycle {left[0]}, conflict {chip.conflict:#04x}")

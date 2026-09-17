@@ -30,7 +30,7 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | `src/protoemu_isa.vh` | the instruction encoding, shared by RTL and assembler |
 | `test/` | cocotb testbenches (run against RTL and the post-layout netlist) |
 | `test/protoemu_asm.py` | assembler, so test programs are mnemonics not hex |
-| `test/protoemu_model.py` | cycle-accurate reference model the RTL is checked against |
+| `test/protoemu_model.py` | cycle-accurate chip-level reference model the RTL is checked against |
 | `docs/isa.md` | instruction set reference |
 | `docs/architecture.md` | design decisions and the measurements behind them |
 | `docs/local-hardening.md` | running the full RTL-to-GDS flow on this machine |
@@ -75,13 +75,13 @@ capture ownership and rendezvous the other three machines will need.
 | | |
 |---|---|
 | Cell area | 256,780 um2, **28.0%** of the 6x4 die (synthesis) |
-| Tests | 25 cocotb tests passing, including decoded UART and I2C traffic |
-| Random | randomised programs checked cycle-for-cycle against a Python model |
+| Tests | 26 cocotb tests passing, including decoded UART and I2C traffic |
+| Random | randomised programs checked cycle-for-cycle against a chip-level Python model |
 | Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines |
 | Lint | clean, zero warnings |
 
-Next: a multi-machine reference model, then `PE_NSM` goes from 1 to 4. Measured
-on the real RTL, four machines with a 64-entry store come to 30.4% at synthesis
+Next: the flip itself — `PE_NSM` 1 to 4 and the program store 128 to 64
+entries. Measured on the real RTL, four machines with a 64-entry store come to 30.4% at synthesis
 with positive pre-layout slack;
 `docs/scaling.md` has the numbers and what is left.
 
