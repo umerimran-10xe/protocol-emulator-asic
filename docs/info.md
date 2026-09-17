@@ -72,9 +72,10 @@ The configuration frame is a 16-bit header — bit 15 set to read, bit 14 to
 reach the control registers rather than the program store, and bits 7:0 the
 start address — followed by 16-bit words with the address auto-incrementing, so
 a whole program loads in one chip-select. Control register *n* holds the
-address machine *n* starts from; control register 8 reads back any pin that
-more than one machine claimed, which is a program error, and clears the bits
-written to it.
+address machine *n* starts from. Control registers 8 and 9 read back the two
+program errors the hardware can see -- a pin more than one machine claimed, and
+a machine that tried to arm edge capture without owning it -- and clear the bits
+written to them.
 
 For a UART loopback smoke test, load the UART program, tie `pio[0]` (TX) to
 `pio[1]` (RX), and check that transmitted bytes come back.

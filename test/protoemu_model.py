@@ -51,7 +51,8 @@ class ProtoEmu:
         self.cfg_msbfirst = 1
         self.cfg_clken = 0
         # capture
-        self.cap_fifo = []
+        self.cap_record = []      # edges written since the last arm
+        self.cap_rd = 0           # this machine's read cursor into them
         self.cap_armed = False
         self.cap_mask = 0
         self.cap_prev = 0
@@ -106,7 +107,7 @@ class ProtoEmu:
             A.CND_YZ:     self.y == 0,
             A.CND_FAULT:  bool(self.fault),
             A.CND_NFAULT: not self.fault,
-            A.CND_CAPRDY: bool(self.cap_fifo),
+            A.CND_CAPRDY: self.cap_rd < len(self.cap_record),
         }.get(cond, False)
 
     def _wp_hit(self, now):
@@ -126,10 +127,13 @@ class ProtoEmu:
         the testbench calls this every cycle regardless of `advance`."""
         if self.cap_armed:
             if (pin_in ^ self.cap_prev) & self.cap_mask:
-                if len(self.cap_fifo) >= self.CAP_DEPTH:
+                # Reading does not make room -- the window holds the first
+                # CAP_DEPTH edges after each arm. src/protoemu_capture.v has
+                # why, and it is the read cursor that makes it necessary.
+                if len(self.cap_record) >= self.CAP_DEPTH:
                     self.cap_overflow = 1
                 else:
-                    self.cap_fifo.append((pin_in, cycle & MASK16))
+                    self.cap_record.append((pin_in, cycle & MASK16))
         self.cap_prev = pin_in
 
     def step(self, pin_in, cycle):
@@ -262,11 +266,13 @@ class ProtoEmu:
             elif fn == A.SYS_CAPARM:
                 self.cap_mask = arg & MASK8
                 self.cap_armed = bool(self.cap_mask)
-                self.cap_fifo = []
+                self.cap_record = []
+                self.cap_rd = 0
                 self.cap_overflow = 0
                 self.cap_prev = pin_in
-            elif fn == A.SYS_CAPPOP and self.cap_fifo:
-                pins, stamp = self.cap_fifo.pop(0)
+            elif fn == A.SYS_CAPPOP and self.cap_rd < len(self.cap_record):
+                pins, stamp = self.cap_record[self.cap_rd]
+                self.cap_rd += 1
                 self.x = pins
                 self.shreg = stamp
 

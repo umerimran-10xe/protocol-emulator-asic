@@ -22,6 +22,7 @@ Control registers:
 |---|---|---|
 | `0 .. NSM-1` | start address for each state machine | read/write |
 | `8` | pins claimed by more than one machine | read; write 1 to clear |
+| `9` | machines that tried to arm capture without owning it | read; write 1 to clear |
 
 Every machine reads the same program store, so without distinct start addresses
 they would all execute the same instructions in lockstep. A machine begins at
@@ -47,6 +48,26 @@ Both halves of this are proved rather than tested: `src/protoemu_sm.v` proves a
 machine never drives outside its own `PINMASK`, and
 `formal/protoemu_arb_miter.v` proves that nothing a non-owner does can reach a
 pin it does not own.
+
+## Capture ownership
+
+There is one record of the captured edges and **one read cursor per machine**.
+Every machine sees every edge and reads at its own pace; `SYS CAPPOP` advances
+only the cursor of the machine that executed it, and `JMP CAPRDY` tests only
+that machine's cursor. Nothing one machine reads is retired out from under
+another.
+
+**`SYS CAPARM` belongs to machine 0.** Arming resets the window for everyone, so
+an arm from any other machine is dropped and its machine number is latched into
+control register 9. What arming does *not* do is give machine 0 exclusive
+access: the other machines still read everything it captured.
+
+The window holds the **first 16 edges after each arm**, and `cap_overflow` goes
+high if a seventeenth arrives. Reading does not make room. That is the price of
+independent cursors: with several readers there is no coherent oldest-unread
+entry to retire, and a machine that stopped reading would otherwise stall
+capture for all of them. A program that needs more than sixteen edges re-arms
+between bursts.
 
 ## Machine state
 

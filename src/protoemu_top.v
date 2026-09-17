@@ -88,29 +88,47 @@ module protoemu_top (
   wire [`PE_IW-1:0]   ctl_wdata;
   reg  [`PE_PC_W-1:0] startpc [0:`PE_NSM-1];
 
+  // Bits of the control address that select a machine. Verilog has no
+  // zero-width part-select, so a single machine still takes one bit.
+  localparam SMIDX_W = (`PE_NSM > 1) ? $clog2(`PE_NSM) : 1;
+
   integer si;
   always @(posedge clk) begin
     if (!rst_n) begin
       for (si = 0; si < `PE_NSM; si = si + 1)
         startpc[si] <= {`PE_PC_W{1'b0}};
     end else if (ctl_we && ctl_addr < `PE_NSM) begin
-      startpc[ctl_addr[$clog2(`PE_NSM+1)-1:0]] <= ctl_wdata[`PE_PC_W-1:0];
+      startpc[ctl_addr[SMIDX_W-1:0]] <= ctl_wdata[`PE_PC_W-1:0];
     end
   end
 
-  // Overlapping PINMASKs are a program error. The arbiter still resolves them
-  // deterministically, but the overlap is latched here so the host can read
-  // back which pins two machines fought over instead of guessing from a scope.
+  // Two program errors are latched rather than acted on, so the host can read
+  // back what a program did wrong instead of inferring it from a scope. Both
+  // clear on a rising edge of `run`, and writing a 1 clears that bit.
+  //
+  //   conflict     two machines claimed the same pin
+  //   caparm_deny  a machine that does not own capture tried to arm it
   wire [`PE_NPIN-1:0] pin_conflict;
+  wire [`PE_NSM-1:0]  caparm_denied;
   wire                conflict_we = ctl_we && (ctl_addr == `PE_CTL_CONFLICT);
+  wire                caparm_we   = ctl_we && (ctl_addr == `PE_CTL_CAPARM);
   reg  [`PE_NPIN-1:0] conflict_sticky;
+  reg  [`PE_NSM-1:0]  caparm_sticky;
 
   always @(posedge clk) begin
-    if (!rst_n || run_rise) conflict_sticky <= {`PE_NPIN{1'b0}};
-    else conflict_sticky <= (conflict_sticky &
-                             ~(conflict_we ? ctl_wdata[`PE_NPIN-1:0]
-                                           : {`PE_NPIN{1'b0}}))
-                            | pin_conflict;
+    if (!rst_n || run_rise) begin
+      conflict_sticky <= {`PE_NPIN{1'b0}};
+      caparm_sticky   <= {`PE_NSM{1'b0}};
+    end else begin
+      conflict_sticky <= (conflict_sticky &
+                          ~(conflict_we ? ctl_wdata[`PE_NPIN-1:0]
+                                        : {`PE_NPIN{1'b0}}))
+                         | pin_conflict;
+      caparm_sticky   <= (caparm_sticky &
+                          ~(caparm_we ? ctl_wdata[`PE_NSM-1:0]
+                                      : {`PE_NSM{1'b0}}))
+                         | caparm_denied;
+    end
   end
 
   // Only the low bits of a control write mean anything today; the rest are
@@ -119,9 +137,11 @@ module protoemu_top (
 
   wire [`PE_IW-1:0] ctl_rdata =
       (ctl_raddr < `PE_NSM)
-        ? {{(`PE_IW-`PE_PC_W){1'b0}}, startpc[ctl_raddr[$clog2(`PE_NSM+1)-1:0]]}
+        ? {{(`PE_IW-`PE_PC_W){1'b0}}, startpc[ctl_raddr[SMIDX_W-1:0]]}
       : (ctl_raddr == `PE_CTL_CONFLICT)
         ? {{(`PE_IW-`PE_NPIN){1'b0}}, conflict_sticky}
+      : (ctl_raddr == `PE_CTL_CAPARM)
+        ? {{(`PE_IW-`PE_NSM){1'b0}}, caparm_sticky}
         : {`PE_IW{1'b0}};
 
   // ---- program store ------------------------------------------------------
@@ -163,9 +183,14 @@ module protoemu_top (
   );
 
   // ---- timestamped edge capture ------------------------------------------
-  wire                 cap_arm, cap_pop, cap_ready;
-  wire [`PE_NPIN-1:0]  cap_arm_mask, cap_pins;
-  wire [`PE_CYC_W-1:0] cap_time;
+  // One record of the edges, one read cursor per machine, so every machine can
+  // measure the shared pins without one machine's pop retiring an entry another
+  // is midway through reading.
+  wire                            cap_arm;
+  wire [`PE_NPIN-1:0]             cap_arm_mask;
+  wire [`PE_NSM-1:0]              cap_pop, cap_ready;
+  wire [`PE_NSM*`PE_NPIN-1:0]     cap_pins;
+  wire [`PE_NSM*`PE_CYC_W-1:0]    cap_time;
 
   // trig_in arms capture from outside the chip as well, so a capture can be
   // started by the event under observation rather than only by the program.
@@ -177,7 +202,7 @@ module protoemu_top (
   end
   wire trig_rise = trig_s[1] & ~trig_q;
 
-  protoemu_capture u_cap (
+  protoemu_capture #(.NRD(`PE_NSM)) u_cap (
       .clk      (clk),
       .rst_n    (rst_n),
       .clr      (run_rise),
@@ -215,16 +240,14 @@ module protoemu_top (
           .pin_out   (sm_out  [m*`PE_NPIN +: `PE_NPIN]),
           .pin_oe    (sm_oe   [m*`PE_NPIN +: `PE_NPIN]),
           .cycle     (cycle),
-          // Capture belongs to machine 0. Letting every machine arm and pop one
-          // shared FIFO races: two pops in the same cycle would retire one
-          // entry between them. docs/scaling.md keeps the per-machine read
-          // pointer that would fix that properly on the open list.
+          // Every machine reads at its own pace; only machine 0 may arm,
+          // because arming resets the window for everyone.
           .cap_arm      (sm_cap_arm[m]),
           .cap_arm_mask (sm_cap_arm_mask[m*`PE_NPIN +: `PE_NPIN]),
           .cap_pop      (sm_cap_pop[m]),
-          .cap_ready    (m == 0 ? cap_ready : 1'b0),
-          .cap_pins     (m == 0 ? cap_pins  : {`PE_NPIN{1'b0}}),
-          .cap_time     (m == 0 ? cap_time  : {`PE_CYC_W{1'b0}}),
+          .cap_ready    (cap_ready[m]),
+          .cap_pins     (cap_pins[m*`PE_NPIN  +: `PE_NPIN]),
+          .cap_time     (cap_time[m*`PE_CYC_W +: `PE_CYC_W]),
           .irq       (sm_irq[m]),
           .halted    (sm_halted[m]),
           .active    (sm_active[m]),
@@ -235,7 +258,17 @@ module protoemu_top (
 
   assign cap_arm      = sm_cap_arm[0];
   assign cap_arm_mask = sm_cap_arm_mask[0 +: `PE_NPIN];
-  assign cap_pop      = sm_cap_pop[0];
+  assign cap_pop      = sm_cap_pop;
+
+  // An arm from any other machine is dropped and reported. Acting on it would
+  // reset the window under whichever machines were reading it.
+  generate
+    if (`PE_NSM > 1) begin : g_caparm_deny
+      assign caparm_denied = {sm_cap_arm[`PE_NSM-1:1], 1'b0};
+    end else begin : g_caparm_deny
+      assign caparm_denied = 1'b0;
+    end
+  endgenerate
 
   // `halted` means the whole chip is done, so it waits for the last machine;
   // `irq` and `active` are true of any of them.
@@ -253,7 +286,9 @@ module protoemu_top (
       .conflict (pin_conflict)
   );
 
-  // The capture strobes of every machine but 0 are deliberately unread.
-  wire _unused_cap = &{1'b0, sm_cap_arm, sm_cap_pop, sm_cap_arm_mask, 1'b0};
+  // Only machine 0's arm mask reaches the capture block -- the rest are dropped
+  // along with the arms that carried them -- and only machine 0's state reaches
+  // the trace pins, which are three bits wide however many machines there are.
+  wire _unused_cap = &{1'b0, sm_cap_arm_mask, sm_trace, 1'b0};
 
 endmodule

@@ -132,13 +132,14 @@ All three tasks were mutation-checked rather than merely observed to pass —
 dropping the priority term, merging drive enables instead of selecting them,
 and suppressing the conflict report each make them fail.
 
-**Directed tests (cocotb) — running.** 23 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 24 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
 clock, counted loops, run/step control, per-machine start addresses, the
-control-register decode, and a cross-check that the assembler and the Verilog
-header agree on all 46 ISA constants.
+control-register decode, the capture window's behaviour when it is read while
+filling, and a cross-check that the assembler and the Verilog header agree on
+all 46 ISA constants.
 
 **Constrained-random — running.** `test/protoemu_model.py` is a cycle-accurate
 Python model of the state machine, written from the RTL and deliberately
@@ -234,7 +235,7 @@ Nothing else stalls, so a program's timing is readable from its source.
 | `src/protoemu_sm.v` | fetch, decode and execute; pin drive with per-pin open-drain |
 | `src/protoemu_arb.v` | pin ownership between machines, and conflict reporting |
 | `src/protoemu_imem.v` | 128 x 16 program store, one write port, one fetch port per machine |
-| `src/protoemu_capture.v` | timestamped edge capture into a 16-entry FIFO |
+| `src/protoemu_capture.v` | timestamped edge capture: one 16-entry record, one read cursor per machine |
 | `src/protoemu_cfg.v` | SPI slave: load and read back the program store and control registers |
 | `src/protoemu_top.v` | cycle counter, input synchronisers, run/step control, the machine array |
 | `src/protoemu_isa.vh` | the encoding, shared by hardware and assembler |
