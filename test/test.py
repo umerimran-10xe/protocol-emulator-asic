@@ -736,3 +736,105 @@ async def test_random_programs_match_the_model(dut):
 
     dut._log.info(f"{trials} random programs (seed {seed:#x}) matched the model "
                   "cycle for cycle")
+
+
+async def _read_shifted_word(dut, clk_pin, data_pin, nbits, limit=4000):
+    """Sample `data_pin` on each rising edge of the emulator's generated clock."""
+    bits, prev = [], (int(dut.uio_out.value) >> clk_pin) & 1
+    for _ in range(limit):
+        await RisingEdge(dut.clk)
+        out = int(dut.uio_out.value)
+        now = (out >> clk_pin) & 1
+        if now and not prev:
+            bits.append((out >> data_pin) & 1)
+            if len(bits) == nbits:
+                return int("".join(str(b) for b in bits), 2)
+        prev = now
+    raise AssertionError(f"only saw {len(bits)} of {nbits} bits")
+
+
+@cocotb.test()
+async def test_capture_timestamps_an_unknown_edge(dut):
+    """Arm edge capture, let an edge arrive whose timing the program was never
+    told, then shift the recorded timestamp back out and check it.
+
+    This is the differentiator: the chip measures a protocol rather than only
+    replaying one. The timestamp lands in SHIFT, so getting it off the chip is
+    an ordinary SHIFT instruction.
+    """
+    host = await setup(dut)
+    edge_at = 120                      # cycles after the run edge
+
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0x06),               # pin 1 data out, pin 2 clock
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.LOAD(A.REG_SHIFTCFG,
+               A.shiftcfg(clkpin=2, clkidle=0, msbfirst=1, clken=1)),
+        A.CAPARM(0x01),                            # watch pin 0
+        A.WAITU(edge_at + 60),                     # wait past the edge
+        A.JMP(A.CND_CAPRDY, 7),                    # 5: something was captured
+        A.SYS(A.SYS_HALT),                         # 6: nothing was -- fail
+        A.SYS(A.SYS_CAPPOP),                       # 7: X <- pins, SHIFT <- timestamp
+        A.SHIFT(dir_in=False, pin=1, nbits=16, delay=3),
+        A.SYS(A.SYS_HALT),
+    ])
+
+    dut.uio_in.value = 0x00
+    await host.start()
+
+    # Drive the edge at a cycle the program has no knowledge of.
+    for _ in range(edge_at):
+        await RisingEdge(dut.clk)
+    dut.uio_in.value = 0x01
+
+    stamp = await _read_shifted_word(dut, clk_pin=2, data_pin=1, nbits=16)
+
+    # The pin passes through two synchroniser flops before capture sees it, and
+    # the counter starts a couple of cycles after the run pin moves.
+    assert abs(stamp - edge_at) <= 6, (
+        f"captured timestamp {stamp}, edge was driven at cycle {edge_at}")
+    dut._log.info(f"captured an edge at cycle {stamp}, driven at {edge_at}")
+
+
+@cocotb.test()
+async def test_capture_measures_a_pulse_width(dut):
+    """Two edges, two timestamps: the difference is a pulse width the program
+    never knew in advance. This is how an unknown bit period gets measured."""
+    host = await setup(dut)
+    rise_at, width = 80, 55
+
+    program = [
+        A.LOAD(A.REG_PINMASK, 0x06),
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.LOAD(A.REG_SHIFTCFG,
+               A.shiftcfg(clkpin=2, clkidle=0, msbfirst=1, clken=1)),
+        A.CAPARM(0x01),
+        A.WAITU(rise_at + width + 60),
+        A.SYS(A.SYS_CAPPOP),                       # first edge
+        A.SHIFT(dir_in=False, pin=1, nbits=16, delay=3),
+        A.SYS(A.SYS_CAPPOP),                       # second edge
+        A.SHIFT(dir_in=False, pin=1, nbits=16, delay=3),
+        A.SYS(A.SYS_HALT),
+    ]
+    await host.load(program)
+
+    dut.uio_in.value = 0x00
+    await host.start()
+
+    async def drive_pulse():
+        for _ in range(rise_at):
+            await RisingEdge(dut.clk)
+        dut.uio_in.value = 0x01
+        for _ in range(width):
+            await RisingEdge(dut.clk)
+        dut.uio_in.value = 0x00
+
+    cocotb.start_soon(drive_pulse())
+    first = await _read_shifted_word(dut, clk_pin=2, data_pin=1, nbits=16)
+    second = await _read_shifted_word(dut, clk_pin=2, data_pin=1, nbits=16)
+
+    measured = second - first
+    assert abs(measured - width) <= 2, (
+        f"measured pulse width {measured}, drove {width} "
+        f"(timestamps {first} and {second})")
+    dut._log.info(f"measured a {measured}-cycle pulse, drove {width}")

@@ -12,7 +12,8 @@ OP_SET, OP_WAITP, OP_WAITU, OP_SHIFT, OP_JMP, OP_ALU, OP_LOAD, OP_SYS = range(8)
 WP_LOW, WP_HIGH, WP_RISE, WP_FALL = range(4)
 
 # JMP conditions
-CND_ALWAYS, CND_XNZ, CND_YNZ, CND_XZ, CND_YZ, CND_FAULT, CND_NFAULT, CND_NEVER = range(8)
+(CND_ALWAYS, CND_XNZ, CND_YNZ, CND_XZ, CND_YZ, CND_FAULT, CND_NFAULT,
+ CND_CAPRDY) = range(8)
 
 # ALU functions
 (ALU_XINC, ALU_XDEC, ALU_YINC, ALU_YDEC, ALU_XMOVY, ALU_YMOVX,
@@ -24,7 +25,8 @@ CND_ALWAYS, CND_XNZ, CND_YNZ, CND_XZ, CND_YZ, CND_FAULT, CND_NFAULT, CND_NEVER =
  REG_TGTLO, REG_TGTHI, REG_SHIFTCFG, REG_SHIFTDAT) = range(8)
 
 # SYS functions
-SYS_NOP, SYS_HALT, SYS_IRQ, SYS_SYNC, SYS_CLRFAULT = range(5)
+(SYS_NOP, SYS_HALT, SYS_IRQ, SYS_SYNC, SYS_CLRFAULT,
+ SYS_CAPARM, SYS_CAPPOP) = range(7)
 
 PC_W = 7
 IMEM_DEPTH = 1 << PC_W
@@ -75,6 +77,12 @@ def LOAD(reg, imm):
 
 def SYS(fn, arg=0):
     return (OP_SYS << 13) | (_fit("fn", fn, 3) << 10) | _fit("arg", arg, 10)
+
+
+def CAPARM(mask):
+    """Arm edge capture on the pins in `mask`, discarding anything captured
+    before. SYS CAPPOP then reads entries out, oldest first."""
+    return SYS(SYS_CAPARM, _fit("mask", mask, 8))
 
 
 def shiftcfg(clkpin=0, clkidle=0, msbfirst=1, clken=0):

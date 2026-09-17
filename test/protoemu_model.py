@@ -50,6 +50,12 @@ class ProtoEmu:
         self.cfg_clkidle = 0
         self.cfg_msbfirst = 1
         self.cfg_clken = 0
+        # capture
+        self.cap_fifo = []
+        self.cap_armed = False
+        self.cap_mask = 0
+        self.cap_prev = 0
+        self.cap_overflow = 0
 
     # ------------------------------------------------------------ outputs --
     @property
@@ -92,6 +98,7 @@ class ProtoEmu:
             A.CND_YZ:     self.y == 0,
             A.CND_FAULT:  bool(self.fault),
             A.CND_NFAULT: not self.fault,
+            A.CND_CAPRDY: bool(self.cap_fifo),
         }.get(cond, False)
 
     def _wp_hit(self, now):
@@ -104,6 +111,19 @@ class ProtoEmu:
         return bool(self.wp_prev and not now)     # WP_FALL
 
     # ---------------------------------------------------------------- step --
+    CAP_DEPTH = 16
+
+    def capture_tick(self, pin_in, cycle):
+        """Edge capture runs off the clock, not off instruction execution, so
+        the testbench calls this every cycle regardless of `advance`."""
+        if self.cap_armed:
+            if (pin_in ^ self.cap_prev) & self.cap_mask:
+                if len(self.cap_fifo) >= self.CAP_DEPTH:
+                    self.cap_overflow = 1
+                else:
+                    self.cap_fifo.append((pin_in, cycle & MASK16))
+        self.cap_prev = pin_in
+
     def step(self, pin_in, cycle):
         """One clock with `advance` asserted. `pin_in` is the synchronised pin
         sample the RTL sees, `cycle` the shared counter's current value."""
@@ -231,6 +251,16 @@ class ProtoEmu:
                 self.tgt = cycle & MASK16
             elif fn == A.SYS_CLRFAULT:
                 self.fault = 0
+            elif fn == A.SYS_CAPARM:
+                self.cap_mask = arg & MASK8
+                self.cap_armed = bool(self.cap_mask)
+                self.cap_fifo = []
+                self.cap_overflow = 0
+                self.cap_prev = pin_in
+            elif fn == A.SYS_CAPPOP and self.cap_fifo:
+                pins, stamp = self.cap_fifo.pop(0)
+                self.x = pins
+                self.shreg = stamp
 
     def _alu(self, fn, imm):
         imm8 = imm & MASK8

@@ -23,6 +23,7 @@ project:
     - "protoemu_sm.v"
     - "protoemu_cfg.v"
     - "protoemu_imem.v"
+    - "protoemu_capture.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
@@ -41,7 +42,7 @@ pinout:
   uo[0]: "cfg_miso"
   uo[1]: "irq"
   uo[2]: "sm0_active"
-  uo[3]: "sm1_active"
+  uo[3]: "cap_overflow"
   uo[4]: "trace0"
   uo[5]: "trace1"
   uo[6]: "trace2"

@@ -78,7 +78,7 @@ constraint.
 | 4 | `Y == 0` |
 | 5 | `FAULT` set; taking the branch clears it |
 | 6 | `FAULT` clear |
-| 7 | never |
+| 7 | the capture FIFO has an entry waiting |
 
 Conditions 1 and 2 make a counted loop two instructions: load the counter, then
 branch back. A loop with `X = n` runs `n + 1` times.
@@ -103,9 +103,47 @@ received byte onto the pins in one cycle, without serialising it.
 ### `SYS fn[2:0], arg[9:0]` — `111`
 
 `0` no-op, `1` halt, `2` pulse `irq` (and halt if `arg[0]`),
-`3` `TGT = cycle` (re-anchor the deadline to now), `4` clear `FAULT`.
+`3` `TGT = cycle` (re-anchor the deadline to now), `4` clear `FAULT`,
+`5` arm edge capture on the pins in `arg[7:0]`, `6` pop a captured entry.
 
 A halted machine holds its pins and stops fetching until the next `run` edge.
+
+## Timestamped edge capture
+
+`SYS CAPARM mask` starts watching the pins in `mask`. From then on, every time
+one of them changes, the **whole pin state and the current cycle count** are
+pushed into a 16-entry FIFO. Recording the full state rather than which pin
+moved means simultaneous edges cost one entry instead of being lost.
+
+`SYS CAPPOP` takes the oldest entry: `X` gets the pin state, `SHIFT` gets the
+16-bit timestamp. Popping an empty FIFO does nothing, so pair it with
+`JMP CAPRDY`. Because the timestamp lands in `SHIFT`, getting it off the chip
+is an ordinary `SHIFT` instruction.
+
+Arming clears the FIFO, so timestamps are always comparable against the moment
+capture started. If more than 16 edges arrive before the program drains them,
+the oldest are kept and `cap_overflow` (`uo[3]`) goes high.
+
+Capture also arms from outside the chip on a rising edge of `trig_in`
+(`ui[4]`), watching all eight pins — so a capture can be started by the event
+being observed rather than only by the program.
+
+This is what lets the chip measure a protocol it was never told about:
+
+```python
+program = [
+    A.CAPARM(0x01),                   # watch pin 0
+    A.WAITU(500),                     # let the traffic happen
+    A.SYS(A.SYS_CAPPOP),              # first edge  -> SHIFT
+    A.SHIFT(dir_in=False, pin=1, nbits=16, delay=3),
+    A.SYS(A.SYS_CAPPOP),              # second edge -> SHIFT
+    A.SHIFT(dir_in=False, pin=1, nbits=16, delay=3),
+    A.SYS(A.SYS_HALT),
+]
+```
+
+The difference between the two timestamps is a pulse width, or a bit period,
+that nothing in the program knew in advance.
 
 ## Worked example: send a byte, MSB first, with a clock
 
