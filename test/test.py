@@ -46,23 +46,43 @@ class Host:
         await ClockCycles(self.dut.clk, SPI_HALF)
         return rx
 
-    async def load(self, program, addr=0):
+    async def _frame(self, read, control, addr):
+        """16-bit header: [15] read, [14] control space, [7:0] address."""
         self.set(CS_N, 0)
         await ClockCycles(self.dut.clk, SPI_HALF)
-        await self.xfer(addr & 0x7F, 8)  # bit 7 clear = write
+        header = ((1 << 15) if read else 0) | ((1 << 14) if control else 0) | (addr & 0xFF)
+        await self.xfer(header, 16)
+
+    async def load(self, program, addr=0):
+        await self._frame(read=False, control=False, addr=addr)
         for word in A.assemble(program):
             await self.xfer(word, 16)
         self.set(CS_N, 1)
         await ClockCycles(self.dut.clk, SPI_HALF * 2)
 
     async def readback(self, count, addr=0):
-        self.set(CS_N, 0)
-        await ClockCycles(self.dut.clk, SPI_HALF)
-        await self.xfer(0x80 | (addr & 0x7F), 8)  # bit 7 set = read
+        await self._frame(read=True, control=False, addr=addr)
         out = [await self.xfer(0, 16) for _ in range(count)]
         self.set(CS_N, 1)
         await ClockCycles(self.dut.clk, SPI_HALF * 2)
         return out
+
+    async def write_control(self, values, addr=0):
+        await self._frame(read=False, control=True, addr=addr)
+        for value in values:
+            await self.xfer(value, 16)
+        self.set(CS_N, 1)
+        await ClockCycles(self.dut.clk, SPI_HALF * 2)
+
+    async def read_control(self, count, addr=0):
+        await self._frame(read=True, control=True, addr=addr)
+        out = [await self.xfer(0, 16) for _ in range(count)]
+        self.set(CS_N, 1)
+        await ClockCycles(self.dut.clk, SPI_HALF * 2)
+        return out
+
+    async def set_start_pc(self, machine, address):
+        await self.write_control([address], addr=machine)
 
     async def start(self):
         """0->1 on run restarts the program from address 0."""
@@ -838,3 +858,50 @@ async def test_capture_measures_a_pulse_width(dut):
         f"measured pulse width {measured}, drove {width} "
         f"(timestamps {first} and {second})")
     dut._log.info(f"measured a {measured}-cycle pulse, drove {width}")
+
+
+@cocotb.test()
+async def test_start_address_selects_where_a_machine_begins(dut):
+    """A machine starts at its configured address, not at zero.
+
+    Every machine shares one program store, so without this they would all
+    execute the same instructions in lockstep and more than one machine would
+    be pointless.
+    """
+    host = await setup(dut)
+
+    # Two programs in one store. The one at 0 would drive 0x0F; the one at 20
+    # drives 0xF0. Only the second should ever run.
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0xFF),
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.SET(0x0F),
+        A.SYS(A.SYS_HALT),
+    ], addr=0)
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0xFF),
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.SET(0xF0),
+        A.SYS(A.SYS_HALT),
+    ], addr=20)
+
+    await host.set_start_pc(machine=0, address=20)
+    assert (await host.read_control(1))[0] == 20, "start address did not read back"
+
+    await host.start()
+    await host.run_until_halt()
+    assert int(dut.uio_out.value) == 0xF0, (
+        f"ran the program at 0, not the one at 20 (pins {int(dut.uio_out.value):#04x})")
+
+
+@cocotb.test()
+async def test_control_space_is_separate_from_the_program_store(dut):
+    """A control write must not land in the program store, or vice versa."""
+    host = await setup(dut)
+    await host.load([A.SET(0xAB, 3), A.SYS(A.SYS_HALT)], addr=0)
+    await host.set_start_pc(machine=0, address=7)
+
+    assert (await host.readback(1, addr=0))[0] == A.SET(0xAB, 3), \
+        "the control write disturbed the program store"
+    assert (await host.read_control(1))[0] == 7, \
+        "the program write disturbed the control registers"

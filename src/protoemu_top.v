@@ -75,6 +75,33 @@ module protoemu_top (
   end
 
   // ---- program store ------------------------------------------------------
+  // ---- control registers --------------------------------------------------
+  // Every machine reads the same program store, so without its own start
+  // address each would execute the same instructions in lockstep.
+  wire                ctl_we;
+  wire [7:0]          ctl_addr;
+  wire [`PE_IW-1:0]   ctl_wdata;
+  reg  [`PE_PC_W-1:0] startpc [0:`PE_NSM-1];
+
+  integer si;
+  always @(posedge clk) begin
+    if (!rst_n) begin
+      for (si = 0; si < `PE_NSM; si = si + 1)
+        startpc[si] <= {`PE_PC_W{1'b0}};
+    end else if (ctl_we && ctl_addr < `PE_NSM) begin
+      startpc[ctl_addr[$clog2(`PE_NSM+1)-1:0]] <= ctl_wdata[`PE_PC_W-1:0];
+    end
+  end
+
+  // Only the low PE_PC_W bits of a control write mean anything today; the rest
+  // are reserved for control registers this design has not needed yet.
+  wire _unused_ctl = &{1'b0, ctl_wdata[`PE_IW-1:`PE_PC_W], 1'b0};
+
+  wire [`PE_IW-1:0] ctl_rdata =
+      (ctl_addr < `PE_NSM)
+        ? {{(`PE_IW-`PE_PC_W){1'b0}}, startpc[ctl_addr[$clog2(`PE_NSM+1)-1:0]]}
+        : {`PE_IW{1'b0}};
+
   wire                imem_we;
   wire [`PE_PC_W-1:0] imem_waddr, imem_raddr, sm_pc;
   wire [`PE_IW-1:0]   imem_wdata, sm_instr, cfg_rdata;
@@ -101,7 +128,11 @@ module protoemu_top (
       .imem_waddr (imem_waddr),
       .imem_raddr (imem_raddr),
       .imem_wdata (imem_wdata),
-      .imem_rdata (cfg_rdata)
+      .imem_rdata (cfg_rdata),
+      .ctl_we     (ctl_we),
+      .ctl_addr   (ctl_addr),
+      .ctl_wdata  (ctl_wdata),
+      .ctl_rdata  (ctl_rdata)
   );
 
   // ---- timestamped edge capture ------------------------------------------
@@ -140,6 +171,7 @@ module protoemu_top (
       .run       (run),
       .step      (step_pulse),
       .clr       (run_rise),
+      .start_pc  (startpc[0]),
       .imem_addr (sm_pc),
       .imem_data (sm_instr),
       .pin_in    (pin_s1),

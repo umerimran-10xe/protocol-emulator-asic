@@ -6,6 +6,29 @@ position. The authoritative encoding is `src/protoemu_isa.vh`; the assembler in
 
 Unless noted, an instruction retires in **one cycle**.
 
+## Configuration port
+
+A 16-bit header, then 16-bit words with the address auto-incrementing:
+
+| Bits | Meaning |
+|---|---|
+| `[15]` | 1 to read, 0 to write |
+| `[14]` | 1 selects the control registers, 0 the program store |
+| `[7:0]` | start address |
+
+Control registers:
+
+| Address | Register |
+|---|---|
+| `0 .. NSM-1` | start address for each state machine |
+
+Every machine reads the same program store, so without distinct start addresses
+they would all execute the same instructions in lockstep. A machine begins at
+its start address on each rising edge of `run`.
+
+The header is 16 bits rather than 8 so the space-select bit does not have to
+compete with the program address, which grows with the store.
+
 ## Machine state
 
 | Register | Width | Purpose |

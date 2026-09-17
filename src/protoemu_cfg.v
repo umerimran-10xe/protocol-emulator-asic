@@ -2,11 +2,24 @@
  * Copyright (c) 2026 Umer Imran
  * SPDX-License-Identifier: Apache-2.0
  *
- * SPI slave that loads and reads back the program store.
+ * SPI slave that loads and reads back the program store and the control
+ * registers.
  *
  * Frame, MSB first, while CS is low:
- *   8-bit header: [7] = 1 for read / 0 for write, [6:0] = start address
+ *   16-bit header: [15] = 1 for read / 0 for write
+ *                  [14] = 1 selects the control registers, 0 the program store
+ *                  [7:0] = start address
  *   then 16-bit words, address auto-incrementing.
+ *
+ * The header is 16 bits rather than 8 so that the address space and the space
+ * select do not have to fight over the program address, which grows with the
+ * store.
+ *
+ * Control registers:
+ *   0..PE_NSM-1  start address for each state machine
+ *
+ * Every machine shares one program store, so without distinct start addresses
+ * they would all execute the same instructions in lockstep.
  *
  * SCLK, MOSI and CS are asynchronous, so they are double-synchronised and all
  * edge detection happens in the core clock domain. That bounds SCLK to well
@@ -29,7 +42,12 @@ module protoemu_cfg (
     output reg  [`PE_PC_W-1:0]  imem_waddr,   // held with imem_we, one cycle behind
     output wire [`PE_PC_W-1:0]  imem_raddr,   // live pointer, for readback
     output reg  [`PE_IW-1:0]    imem_wdata,
-    input  wire [`PE_IW-1:0]    imem_rdata
+    input  wire [`PE_IW-1:0]    imem_rdata,
+
+    output reg                  ctl_we,
+    output reg  [7:0]           ctl_addr,
+    output reg  [`PE_IW-1:0]    ctl_wdata,
+    input  wire [`PE_IW-1:0]    ctl_rdata
 );
 
   reg [2:0] sclk_s, cs_s;
@@ -41,28 +59,31 @@ module protoemu_cfg (
   wire cs_start  =  cs_s[2] & ~cs_s[1];   // CS just went low
 
   reg        phase;        // 0 = header, 1 = data words
-  reg        rd;           // header bit 7
+  reg        rd;           // header bit 15
+  reg        ctl;          // header bit 14: control registers rather than program
   reg [4:0]  bitcnt;
   reg [`PE_IW-2:0] insh;   // inbound shift register (the 16th bit is used directly)
   reg [`PE_IW-1:0] outsh;  // outbound shift register
-  reg [`PE_PC_W-1:0] addr; // auto-incrementing word pointer
+  reg [7:0]  addr;         // auto-incrementing word pointer
 
-  assign imem_raddr = addr;
+  assign imem_raddr = addr[`PE_PC_W-1:0];
 
   always @(posedge clk) begin
     if (!rst_n) begin
       sclk_s <= 3'b000; cs_s <= 3'b111; mosi_s <= 2'b00;
-      phase <= 1'b0; rd <= 1'b0; bitcnt <= 5'd0;
+      phase <= 1'b0; rd <= 1'b0; ctl <= 1'b0; bitcnt <= 5'd0;
       insh <= {(`PE_IW-1){1'b0}}; outsh <= {`PE_IW{1'b0}};
-      imem_we <= 1'b0; addr <= {`PE_PC_W{1'b0}};
+      imem_we <= 1'b0; addr <= 8'd0;
       imem_waddr <= {`PE_PC_W{1'b0}};
+      ctl_we <= 1'b0; ctl_addr <= 8'd0; ctl_wdata <= {`PE_IW{1'b0}};
       imem_wdata <= {`PE_IW{1'b0}}; miso <= 1'b0;
     end else begin
       sclk_s <= {sclk_s[1:0], sclk_i};
       cs_s   <= {cs_s[1:0],   cs_n_i};
       mosi_s <= {mosi_s[0],   mosi_i};
 
-      imem_we <= 1'b0;      // single-cycle write strobe
+      imem_we <= 1'b0;      // single-cycle write strobes
+      ctl_we  <= 1'b0;
 
       if (cs_start) begin
         phase  <= 1'b0;
@@ -74,20 +95,29 @@ module protoemu_cfg (
           bitcnt <= bitcnt + 1'b1;
 
           if (!phase) begin
-            if (bitcnt == 5'd7) begin
-              // {insh[6:0], mosi} is the freshly completed header byte
-              rd        <= insh[6];
-              addr      <= {insh[5:0], mosi_s[1]};
-              phase     <= 1'b1;
-              bitcnt    <= 5'd0;
+            if (bitcnt == 5'd15) begin
+              // {insh, mosi} is the freshly completed 16-bit header
+              rd     <= insh[`PE_IW-2];
+              ctl    <= insh[`PE_IW-3];
+              addr   <= {insh[6:0], mosi_s[1]};
+              phase  <= 1'b1;
+              bitcnt <= 5'd0;
             end
           end else if (bitcnt == 5'd15) begin
             bitcnt <= 5'd0;
             addr   <= addr + 1'b1;
             if (!rd) begin
-              imem_wdata <= {insh, mosi_s[1]};
-              imem_waddr <= addr;   // this word's address, not the next one
-              imem_we    <= 1'b1;
+              // the write strobe and the pointer increment land on the same
+              // edge, so the write carries its own copy of the address
+              if (ctl) begin
+                ctl_wdata <= {insh, mosi_s[1]};
+                ctl_addr  <= addr;
+                ctl_we    <= 1'b1;
+              end else begin
+                imem_wdata <= {insh, mosi_s[1]};
+                imem_waddr <= addr[`PE_PC_W-1:0];
+                imem_we    <= 1'b1;
+              end
             end
           end
         end
@@ -100,8 +130,9 @@ module protoemu_cfg (
             miso <= 1'b0;
           end else if (bitcnt == 5'd0) begin
             // word boundary: imem_rdata already tracks imem_addr
-            miso  <= imem_rdata[`PE_IW-1];
-            outsh <= {imem_rdata[`PE_IW-2:0], 1'b0};
+            miso  <= ctl ? ctl_rdata[`PE_IW-1] : imem_rdata[`PE_IW-1];
+            outsh <= ctl ? {ctl_rdata[`PE_IW-2:0], 1'b0}
+                         : {imem_rdata[`PE_IW-2:0], 1'b0};
           end else begin
             miso  <= outsh[`PE_IW-1];
             outsh <= {outsh[`PE_IW-2:0], 1'b0};
