@@ -67,9 +67,11 @@ counter to zero and clears the cycle counter, so every run starts identically.
 While `run` is low the machine is frozen, and each pulse on `step` advances it
 one cycle -- enough to single-step a program on the bench.
 
-The configuration frame is an 8-bit header (bit 7 set to read, bits 6:0 the
-start address) followed by 16-bit words with the address auto-incrementing, so
-a whole program loads in one chip-select.
+The configuration frame is a 16-bit header — bit 15 set to read, bit 14 to
+reach the control registers rather than the program store, and bits 7:0 the
+start address — followed by 16-bit words with the address auto-incrementing, so
+a whole program loads in one chip-select. Control register *n* holds the
+address machine *n* starts from.
 
 For a UART loopback smoke test, load the UART program, tie `pio[0]` (TX) to
 `pio[1]` (RX), and check that transmitted bytes come back.

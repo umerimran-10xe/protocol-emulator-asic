@@ -18,7 +18,8 @@ module protoemu_sm (
     input  wire                  rst_n,
     input  wire                  run,        // low holds the machine in place
     input  wire                  step,       // single-cycle advance while !run
-    input  wire                  clr,        // synchronous restart: PC=0, pins released
+    input  wire                  clr,        // synchronous restart to start_pc
+    input  wire [`PE_PC_W-1:0]   start_pc,   // where this machine begins
 
     output wire [`PE_PC_W-1:0]   imem_addr,  // combinational read port
     input  wire [`PE_IW-1:0]     imem_data,
@@ -167,7 +168,7 @@ module protoemu_sm (
   integer k;
   always @(posedge clk) begin
     if (!rst_n || clr) begin
-      st <= ST_EXEC; pc <= {`PE_PC_W{1'b0}};
+      st <= ST_EXEC; pc <= start_pc;
       x <= 8'd0; y <= 8'd0; shreg <= 16'd0; delay_cnt <= 5'd0;
       tgt <= {`PE_CYC_W{1'b0}};
       pinmask <= {`PE_NPIN{1'b0}}; drivemode <= {`PE_NPIN{1'b0}};
