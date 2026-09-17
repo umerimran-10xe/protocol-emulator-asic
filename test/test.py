@@ -9,7 +9,7 @@ assembler in protoemu_asm.py rather than as hex, so they stay readable.
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
 import protoemu_asm as A
 
@@ -601,3 +601,138 @@ async def test_i2c_start_and_address_on_an_open_drain_bus(dut):
     await host.start()
     got = await watcher
     assert got == address, f"bus saw {got:#04x}, program sent {address:#04x}"
+
+
+def _random_program(rng, length):
+    """A random but useful instruction stream.
+
+    Fully uniform 16-bit words would mostly be long WAITs and immediate halts,
+    which exercises nothing. This weights towards instructions that move pins
+    and keeps waits short so a program actually gets somewhere.
+    """
+    program = [
+        A.LOAD(A.REG_PINMASK, rng.randrange(256)),
+        A.LOAD(A.REG_DRIVEMODE, rng.randrange(256)),
+        A.LOAD(A.REG_SHIFTCFG, A.shiftcfg(clkpin=rng.randrange(8),
+                                          clkidle=rng.randrange(2),
+                                          msbfirst=rng.randrange(2),
+                                          clken=rng.randrange(2))),
+    ]
+    while len(program) < length:
+        pick = rng.randrange(10)
+        if pick < 3:
+            program.append(A.SET(rng.randrange(256), rng.randrange(4)))
+        elif pick == 3:
+            program.append(A.WAITP(rng.randrange(4), rng.randrange(8),
+                                   rng.randrange(1, 12)))
+        elif pick == 4:
+            program.append(A.WAITU(rng.randrange(1, 24)))
+        elif pick == 5:
+            program.append(A.SHIFT(bool(rng.randrange(2)), rng.randrange(8),
+                                   rng.randrange(1, 5), rng.randrange(3)))
+        elif pick == 6 and len(program) > 3:
+            # Branch strictly inside the program, so control can never reach an
+            # address the loader did not write.
+            program.append(A.JMP(rng.randrange(7), rng.randrange(3, len(program))))
+        elif pick == 7:
+            program.append(A.ALU(rng.randrange(13), rng.randrange(256)))
+        elif pick == 8:
+            program.append(A.LOAD(rng.randrange(8), rng.randrange(256)))
+        else:
+            program.append(A.SYS(rng.choice([A.SYS_NOP, A.SYS_SYNC, A.SYS_CLRFAULT]),
+                                 rng.randrange(4)))
+    # Falling off the end must halt rather than run into whatever the previous
+    # program left in the store: the loader only writes as many words as this
+    # program has, so everything past it is stale, and the model cannot know
+    # what it holds.
+    program.append(A.SYS(A.SYS_HALT))
+    return program
+
+
+@cocotb.test()
+async def test_random_programs_match_the_model(dut):
+    """Run randomised instruction streams through the RTL and through the
+    Python model in lockstep, comparing the pins every cycle.
+
+    The directed tests check the behaviours we thought to ask about. This
+    checks the ones we did not.
+
+    The model is fed `pin_s1`, the synchronised sample the state machine itself
+    reads, rather than `uio_in`. The two input flops are trivial and separately
+    covered; feeding them in here would only add bookkeeping to the test.
+    """
+    import os
+    import random
+    import protoemu_model as PM
+
+    # Deeper soak without editing the test: PROTOEMU_TRIALS=200 ./test
+    trials = int(os.environ.get("PROTOEMU_TRIALS", "20"))
+    seed = int(os.environ.get("PROTOEMU_SEED", "0xC0FFEE"), 0)
+
+    host = await setup(dut)
+    rng = random.Random(seed)
+    top = dut.user_project.u_top
+    sm = top.u_sm
+
+    def mismatch(trial, cycle, model, program):
+        got = (int(dut.uio_out.value), int(dut.uio_oe.value),
+               (int(dut.uo_out.value) >> HALTED) & 1)
+        want = (model.pin_out, model.pin_oe, int(model.halted))
+        if got == want:
+            return None
+        return (
+            f"trial {trial}, cycle {cycle}: "
+            f"RTL out={got[0]:#04x} oe={got[1]:#04x} halted={got[2]}, "
+            f"model out={want[0]:#04x} oe={want[1]:#04x} halted={want[2]}\n"
+            f"  RTL   pc={int(sm.pc.value)} st={int(sm.st.value)} "
+            f"pinval={int(sm.pinval.value):#04x} pinmask={int(sm.pinmask.value):#04x} "
+            f"drivemode={int(sm.drivemode.value):#04x} shreg={int(sm.shreg.value):#06x}\n"
+            f"  model pc={model.pc} st={model.st} "
+            f"pinval={model.pinval:#04x} pinmask={model.pinmask:#04x} "
+            f"drivemode={model.drivemode:#04x} shreg={model.shreg:#06x}\n"
+            f"  program {[hex(w) for w in program]}")
+
+    for trial in range(trials):
+        program = _random_program(rng, rng.randrange(12, 28))
+        await host.load(program)
+
+        model = PM.ProtoEmu(program)
+        dut.uio_in.value = 0
+        await host.start()
+
+        # The cycle counter reads 0 for several edges before the run edge, so
+        # align on the transition into 1 -- that is the edge at which the
+        # machine retired its first instruction, with the counter reading 0.
+        for _ in range(16):
+            pin_in = int(top.pin_s1.value)
+            await RisingEdge(dut.clk)
+            await Timer(1, unit="ns")
+            if int(top.cycle.value) == 1:
+                break
+        else:
+            raise AssertionError("cycle counter never started")
+
+        model.step(pin_in, 0)
+        problem = mismatch(trial, 0, model, program)
+        assert problem is None, problem
+
+        for cycle in range(1, 220):
+            if model.halted:
+                break
+            pin_in = int(top.pin_s1.value)
+            # Change the pins now and then, so WAITP and SHIFT-in see real
+            # transitions rather than a constant level.
+            if rng.randrange(5) == 0:
+                dut.uio_in.value = rng.randrange(256)
+            await RisingEdge(dut.clk)
+            await Timer(1, unit="ns")
+
+            model.step(pin_in, cycle)
+            problem = mismatch(trial, cycle, model, program)
+            assert problem is None, problem
+
+        host.set(RUN, 0)
+        await ClockCycles(dut.clk, 3)
+
+    dut._log.info(f"{trials} random programs (seed {seed:#x}) matched the model "
+                  "cycle for cycle")

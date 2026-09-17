@@ -30,6 +30,7 @@ ISA; low-speed USB and 10Mbit Ethernet as stretch goals.
 | `src/protoemu_isa.vh` | the instruction encoding, shared by RTL and assembler |
 | `test/` | cocotb testbenches (run against RTL and the post-layout netlist) |
 | `test/protoemu_asm.py` | assembler, so test programs are mnemonics not hex |
+| `test/protoemu_model.py` | cycle-accurate reference model the RTL is checked against |
 | `docs/isa.md` | instruction set reference |
 | `docs/architecture.md` | design decisions and the measurements behind them |
 | `docs/local-hardening.md` | running the full RTL-to-GDS flow on this machine |
@@ -70,7 +71,8 @@ against RTL, and the design hardens cleanly.
 | | |
 |---|---|
 | Cell area | 219,763 um2, **24.0%** of the 6x4 die |
-| Tests | 17 cocotb tests passing, including decoded UART and I2C traffic |
+| Tests | 18 cocotb tests passing, including decoded UART and I2C traffic |
+| Random | randomised programs checked cycle-for-cycle against a Python model |
 | Formal | 6 safety properties proved by k-induction |
 | Lint | clean, zero warnings |
 

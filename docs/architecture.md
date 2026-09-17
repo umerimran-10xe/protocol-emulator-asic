@@ -101,15 +101,30 @@ the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 | An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
 | Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-**Directed tests (cocotb) — running.** 17 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 18 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
 clock, counted loops, run/step control, and a cross-check that the assembler
 and the Verilog header agree on all 46 ISA constants.
 
-**Constrained-random — next.** Randomised instruction streams against a Python
-reference model of the ISA, comparing pin traces cycle by cycle.
+**Constrained-random — running.** `test/protoemu_model.py` is a cycle-accurate
+Python model of the state machine, written from the RTL and deliberately
+mirroring its structure: one `step()` is one clock, every read takes the
+pre-state, and the variables carry the register names, so a mismatch report
+names the register that diverged.
+
+`test_random_programs_match_the_model` runs randomised instruction streams
+through the RTL and the model in lockstep and compares the pins every cycle.
+The generator is weighted rather than uniform -- uniform 16-bit words are
+mostly long waits and immediate halts, which exercises nothing -- and branches
+are confined inside the program so control cannot reach an address the loader
+never wrote.
+
+    PROTOEMU_TRIALS=250 PROTOEMU_SEED=0x5EED make   # deeper soak
+
+The default of 20 programs keeps the suite a few seconds; the soak is for
+before a merge that touches the datapath.
 
 **Protocol conformance — started.** Two protocols so far, both decoded by
 models written from the protocol rather than from the program under test:
