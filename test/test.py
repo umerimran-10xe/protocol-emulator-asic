@@ -16,7 +16,7 @@ import protoemu_asm as A
 # ui_in bit positions
 SCLK, MOSI, CS_N, RUN, STEP = 0, 1, 2, 3, 7
 # uo_out bit positions
-MISO, IRQ, ACTIVE, HALTED = 0, 1, 2, 7
+MISO, IRQ, ACTIVE, CAP_OVERFLOW, HALTED = 0, 1, 2, 3, 7
 
 SPI_HALF = 8  # core clocks per SPI half-period; SCLK must be well under clk
 
@@ -907,28 +907,83 @@ async def test_control_space_is_separate_from_the_program_store(dut):
         "the program write disturbed the control registers"
 
 
-@cocotb.test()
-async def test_conflict_register_reads_clean_and_is_addressed_separately(dut):
-    """The pin-conflict status register answers at its own control address.
+CTL_CONFLICT, CTL_CAPARM = 8, 9
 
-    What it reports -- which pins two machines both claimed -- is proved
-    exhaustively in formal/, because the arbiter is combinational. What formal
-    does not see is the control-space decode around it, which is what this
-    checks: the status register must not shadow a start address, and a write
-    aimed at it must not land on one.
+
+@cocotb.test()
+async def test_program_error_registers_are_addressed_separately(dut):
+    """The two program-error registers answer at their own control addresses.
+
+    What they report -- pins two machines both claimed, and an arm from a
+    machine that does not own capture -- needs more than one machine to happen
+    at all; the arbitration half is proved exhaustively in formal/. What no
+    proof covers is the control-space decode around them, which is what this
+    checks: a status register must not shadow a start address, and a write
+    aimed at one must not land somewhere else.
     """
-    CTL_CONFLICT = 8
     host = await setup(dut)
 
     await host.set_start_pc(machine=0, address=33)
-    assert (await host.read_control(1, addr=CTL_CONFLICT))[0] == 0, \
-        "one machine cannot contend with itself, so nothing should be reported"
+    for addr, why in ((CTL_CONFLICT, "one machine cannot contend with itself"),
+                      (CTL_CAPARM, "machine 0 owns capture, so its arm is never denied")):
+        assert (await host.read_control(1, addr=addr))[0] == 0, \
+            f"{why}, so nothing should be reported"
     assert (await host.read_control(1, addr=0))[0] == 33, \
-        "reading the status register disturbed the start address"
+        "reading a status register disturbed the start address"
 
     # Writing 1s clears the reported bits. With one machine there is nothing to
-    # clear, so what this really pins down is that the write stays in its lane.
+    # clear, so what this really pins down is that the writes stay in their lane.
     await host.write_control([0x00FF], addr=CTL_CONFLICT)
+    await host.write_control([0x00FF], addr=CTL_CAPARM)
     assert (await host.read_control(1, addr=0))[0] == 33, \
-        "the status write landed on the start address"
+        "a status write landed on the start address"
     assert (await host.read_control(1, addr=CTL_CONFLICT))[0] == 0
+    assert (await host.read_control(1, addr=CTL_CAPARM))[0] == 0
+
+
+@cocotb.test()
+async def test_reading_the_capture_window_does_not_make_room(dut):
+    """Capture holds the first 16 edges after an arm, and reading does not free
+    space for more.
+
+    That is the price of giving every machine its own read cursor: with several
+    independent readers there is no coherent oldest-unread entry to retire, so
+    the window is fixed between arms. The discriminating sequence is 16 edges,
+    four pops, then four more edges -- with a shared FIFO the pops would have
+    made room and nothing would be lost, so `cap_overflow` is what separates the
+    two designs.
+    """
+    host = await setup(dut)
+
+    await host.load([
+        A.LOAD(A.REG_PINMASK, 0x00),   # drive nothing; this machine only watches
+        A.CAPARM(0x01),                # watch pin 0
+        A.WAITU(600),                  # 2: let the first 16 edges land
+        A.LOAD(A.REG_Y, 3),
+        A.SYS(A.SYS_CAPPOP),           # 4: four pops, which free nothing
+        A.JMP(A.CND_YNZ, 4),
+        A.WAITU(500),                  # 6: and now the edges that overflow
+        A.SYS(A.SYS_HALT),
+    ])
+
+    level = 0
+    dut.uio_in.value = level
+    await host.start()
+
+    async def edges(n):
+        nonlocal level
+        for _ in range(n):
+            await ClockCycles(dut.clk, 20)
+            level ^= 1
+            dut.uio_in.value = level
+
+    await edges(16)                     # fills the window exactly
+    assert (int(dut.uo_out.value) >> CAP_OVERFLOW) & 1 == 0, \
+        "16 edges is the window, not one too many"
+
+    await ClockCycles(dut.clk, 400)     # the program pops during this
+    await edges(4)
+    await host.run_until_halt()
+
+    assert (int(dut.uo_out.value) >> CAP_OVERFLOW) & 1 == 1, \
+        "the four pops made room, so the window still behaves like a FIFO"

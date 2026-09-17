@@ -81,6 +81,8 @@
 `define PE_CTL_STARTPC   8'd0  // 0 .. PE_NSM-1: each machine's start address
 `define PE_CTL_CONFLICT  8'd8  // read: pins claimed by more than one machine
                                // write: 1 clears that bit
+`define PE_CTL_CAPARM    8'd9  // read: machines that tried to arm capture
+                               // without owning it; write: 1 clears that bit
 
 `define PE_CAP_DEPTH_W  4     // 16 entries of {pins[7:0], timestamp[15:0]}
 

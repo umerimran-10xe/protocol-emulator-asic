@@ -44,6 +44,28 @@ nets driving that store. Halving the store halves the mux depth *and* halves
 the fanout on the PC bits feeding it, so the one change attacks the area
 hog, the critical path and the fanout pressure at once.
 
+## Re-measured against the real RTL
+
+The table above came from variants built to be structurally representative. Now
+that pin arbitration and per-machine capture cursors exist, the same three
+configurations can be measured on the actual design:
+
+| Configuration | Variant | Real RTL | Post-layout (est.) |
+|---|---|---|---|
+| 1 machine, 128 entries | 28.1% | 28.0% | ~39.2% |
+| 4 machines, 128 entries | 43.7% | 45.6% | ~63.8% |
+| **4 machines, 64 entries** | 28.3% | **30.3%** | **~42.4%** |
+
+The variants were **2 points optimistic** at four machines, which is what the
+arbiter, the four read cursors and the four fetch ports cost over a structural
+stand-in. Every conclusion survives: four machines with a 128-entry store is
+still over the 60% density target, and four machines with a 64-entry store still
+fits with room to spare.
+
+The timing result survives too, and improved. Pre-layout slack at four machines
+and 64 entries is **+5.69 ns, met** — the variant measured +3.58 ns. Halving the
+store still pays for the machines several times over.
+
 ## The decision
 
 **Four machines, 64-entry shared store.** The trade is explicit: four machines
@@ -70,11 +92,13 @@ correct. Before this becomes real RTL:
   silently resolved. The formal property has been extended the way this asked:
   `formal/protoemu_arb_miter.v` proves cross-machine non-interference at four
   machines, as a two-copy miter. `docs/architecture.md` has the properties.
-- **Capture ownership.** The variants let any machine arm and pop the shared
-  FIFO, which races. Capture is currently wired to machine 0 alone, which is
-  correct but wasteful — three machines cannot measure anything. The real fix is
-  a read pointer per machine into one shared record, so they share the edges
-  without sharing the pop.
+- ~~**Capture ownership.**~~ **Done.** One record of the edges, one read cursor
+  per machine, so every machine reads every edge at its own pace and no pop
+  retires an entry out from under another. Arming stays machine 0's, because it
+  resets the window for everyone; an arm from any other machine is dropped and
+  reported in control register 9. The cost is that reading no longer makes room
+  — the window holds the first 16 edges after each arm — which is what having
+  several independent cursors buys.
 - **Synchronisation between machines.** `SYS SYNC` currently re-anchors one
   machine's deadline. A barrier across machines is what full-duplex protocols
   will actually want.
@@ -86,6 +110,7 @@ already in place and parameterised, so flipping it is a one-line change to
 `src/protoemu_isa.vh` — but flipping it before capture and synchronisation are
 designed would ship three machines that cannot measure or coordinate.
 
-The arbitration work cost **722 um2**, 0.28% of the 6x4 die: 27.9% to 28.0%
-at synthesis, with pre-layout slack unchanged (-12.90 ns to -12.73 ns, inside
-the noise between runs).
+Pin arbitration cost **722 um2** and capture ownership a further **140 um2** at
+one machine — 0.33% of the 6x4 die between them, 27.9% to 28.0% at synthesis,
+with pre-layout slack unchanged. The cursors only really cost anything once
+there are four of them, which is what the re-measured table above prices.
