@@ -1,0 +1,17 @@
+# Proofs for the guarantees in docs/isa.md. `prove` runs bounded model checking
+# and then k-induction, so a pass covers every reachable state, not just the
+# first N cycles.
+[options]
+mode prove
+depth 12
+
+[engines]
+smtbmc yices
+
+[script]
+read_verilog -sv -formal -I. protoemu_sm.v
+prep -top protoemu_sm
+
+[files]
+../src/protoemu_sm.v
+../src/protoemu_isa.vh

@@ -82,29 +82,107 @@ store per state machine is therefore affordable **in flip-flops**, without the
 macro-placement and routing-halo cost of an SRAM macro. SRAM remains an option
 if the program store needs to be deeper.
 
-## Verification plan
+## Verification
 
-This is half the judging criteria, so it is designed up front rather than
-bolted on.
+Half the judging criteria, so it was designed up front rather than bolted on.
+Two of the four layers are running.
 
-- **Formal (SymbiYosys + Yices):** prove the properties that make the ISA
-  trustworthy — every instruction retires in its stated cycle count; `WAITU`
-  never overshoots its deadline; `WAITP` always terminates within its timeout;
-  open-drain pins never drive high.
-- **Constrained-random:** randomised instruction streams against a Python
-  reference model of the ISA, comparing pin traces cycle by cycle.
-- **Protocol conformance:** cocotb testbenches that talk to independent
-  UART/SPI/I2C models, so we test against the protocol rather than against
-  our own assumptions.
-- **Gate-level:** the same tests re-run on the post-layout netlist in CI.
+**Formal (SymbiYosys + Yices) — running.** `./scripts/formal.sh` proves the
+following by k-induction, so they hold in every reachable state rather than
+just the first few cycles. The properties live in an `ifdef FORMAL` block at
+the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 
-## Open questions
+| Property | Why it matters |
+|---|---|
+| An open-drain pin never drives high | Driving high into an I2C bus is contention |
+| A pin outside `PINMASK` is never driven | One machine cannot reach into another's pins |
+| The state register only holds defined states | The unused encodings 6 and 7 are unreachable |
+| A halted machine holds its pins and stays halted | Found a real bug: `ST_HALT` fell through to the shift datapath and kept driving |
+| An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
+| Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-1. **Two state machines or four?** Four is more flexible but the pin block and
-   program store cost scale with it. Two is the safe 6x4 choice.
-2. **Shared or per-SM instruction memory?** Sharing saves area; separate stores
-   avoid contention.
-3. **Is edge capture worth its area?** It is the strongest differentiator but
-   needs a timestamp FIFO. Where does it sit against the 6x4 budget?
-4. **Clock rate.** 50 MHz is the template default. Low-speed USB (1.5 Mbit) and
-   10Mbit Ethernet need oversampling headroom; what does timing closure allow?
+**Directed tests (cocotb) — running.** 17 tests in `test/test.py`, written
+against the assembler rather than hex. They cover config load and readback, pin
+drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
+`SHIFT` in and out against a peripheral model that responds to the generated
+clock, counted loops, run/step control, and a cross-check that the assembler
+and the Verilog header agree on all 46 ISA constants.
+
+**Constrained-random — next.** Randomised instruction streams against a Python
+reference model of the ISA, comparing pin traces cycle by cycle.
+
+**Protocol conformance — started.** Two protocols so far, both decoded by
+models written from the protocol rather than from the program under test:
+
+- a 1 Mbaud UART frame, recovered by a receiver that finds the start bit and
+  samples at mid-bit;
+- an I2C START and address byte on a bus modelled with pull-ups, where a line
+  reads low only while the emulator actively drives it -- so the model would
+  catch the emulator driving high, not just report the wrong byte.
+
+SPI against a third-party model is next. These are the tests that matter most:
+they show protocols the hardware was never told about, expressed as programs.
+
+**Gate-level — running in CI.** The same tests re-run on the post-layout
+netlist by the `gl_test` job.
+
+## Design decisions, and what settled them
+
+The first increment is built and measured, so the questions this document
+opened with are answered from synthesis rather than from estimates. One state
+machine plus the shared 128 x 16 program store synthesises to **219,763 um2 of
+cell area, 24.0% of the 6x4 die**, of which 51% is sequential.
+
+**Shared instruction memory, not one store per machine.** The program store is
+2048 bits and dominates the sequential area. Four private copies would be
+~44% of the die on their own, before any logic. One shared store with a
+combinational read port per machine costs roughly 35,000 um2 per extra port --
+about 3.8% of the die each.
+
+**Four state machines fit.** Each additional machine costs one read port plus
+its own ~250 bits of state, measured at about 5% of the die. Four machines land
+near 40% of cell area against LibreLane's 60% density target, so the flexible
+option is also the affordable one. The build order is still 1 -> 2 -> 4, with
+`area.sh` and a hardening run gating each step rather than a single jump.
+
+**Timestamped edge capture earns its place.** A 16-entry FIFO of
+`{pin[2:0], timestamp[15:0], direction}` is 320 bits, which is 15,700 um2, or
+**1.7% of the die**. That is the cheapest of the four differentiators and the
+only one that lets the chip measure a protocol it was not told about. It goes
+into the next increment.
+
+**Clock rate stays at 50 MHz** until the design is large enough for the number
+to mean something. See `docs/baseline-results.md` for the slack the current
+build closes with.
+
+## Instruction timing
+
+The property the formal work will prove, and what the cocotb tests already
+check: every instruction retires in exactly one cycle, except
+
+- `SET` and `SHIFT` with a non-zero delay field, which add that many cycles,
+- `WAITP`, which retires when its condition is met or its timeout expires,
+- `WAITU`, which retires when the shared cycle counter reaches `TGT`.
+
+Nothing else stalls, so a program's timing is readable from its source.
+
+## What is built
+
+| Module | Role |
+|---|---|
+| `src/protoemu_sm.v` | fetch, decode and execute; pin drive with per-pin open-drain |
+| `src/protoemu_imem.v` | 128 x 16 program store, one write port, two read ports |
+| `src/protoemu_cfg.v` | SPI slave: load and read back the program store |
+| `src/protoemu_top.v` | cycle counter, input synchronisers, run/step control |
+| `src/protoemu_isa.vh` | the encoding, shared by hardware and assembler |
+| `test/protoemu_asm.py` | assembler, so programs are written in mnemonics |
+
+## Still open
+
+1. **Does the shared store need a write port from the machines themselves?**
+   Self-modifying programs would make adaptive protocols possible, but the
+   arbitration cost across four machines is not yet measured.
+2. **How do machines synchronise with each other?** `SYS SYNC` currently only
+   re-anchors one machine's deadline. A barrier across machines is the natural
+   extension, and is what full-duplex protocols will want.
+3. **Clock rate**, once the design is large enough for timing closure to bind.
