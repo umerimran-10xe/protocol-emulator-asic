@@ -30,6 +30,8 @@ module protoemu_top (
     output wire [`PE_NPIN-1:0]  pin_o,
     output wire [`PE_NPIN-1:0]  pin_oe,
 
+    input  wire                 trig_i,     // external arm for edge capture
+    output wire                 cap_overflow,
     output wire                 irq,
     output wire                 halted,
     output wire                 active,
@@ -102,6 +104,36 @@ module protoemu_top (
       .imem_rdata (cfg_rdata)
   );
 
+  // ---- timestamped edge capture ------------------------------------------
+  wire                cap_arm, cap_pop, cap_ready;
+  wire [`PE_NPIN-1:0] cap_arm_mask, cap_pins;
+  wire [`PE_CYC_W-1:0] cap_time;
+
+  // trig_in arms capture from outside the chip as well, so a capture can be
+  // started by the event under observation rather than only by the program.
+  reg [1:0] trig_s;
+  reg       trig_q;
+  always @(posedge clk) begin
+    if (!rst_n) begin trig_s <= 2'b00; trig_q <= 1'b0; end
+    else        begin trig_s <= {trig_s[0], trig_i}; trig_q <= trig_s[1]; end
+  end
+  wire trig_rise = trig_s[1] & ~trig_q;
+
+  protoemu_capture u_cap (
+      .clk      (clk),
+      .rst_n    (rst_n),
+      .clr      (run_rise),
+      .arm      (cap_arm | trig_rise),
+      .arm_mask (cap_arm ? cap_arm_mask : {`PE_NPIN{1'b1}}),
+      .pin_in   (pin_s1),
+      .cycle    (cycle),
+      .pop      (cap_pop),
+      .rd_pins  (cap_pins),
+      .rd_time  (cap_time),
+      .ready    (cap_ready),
+      .overflow (cap_overflow)
+  );
+
   protoemu_sm u_sm (
       .clk       (clk),
       .rst_n     (rst_n),
@@ -114,6 +146,12 @@ module protoemu_top (
       .pin_out   (pin_o),
       .pin_oe    (pin_oe),
       .cycle     (cycle),
+      .cap_arm      (cap_arm),
+      .cap_arm_mask (cap_arm_mask),
+      .cap_pop      (cap_pop),
+      .cap_ready    (cap_ready),
+      .cap_pins     (cap_pins),
+      .cap_time     (cap_time),
       .irq       (irq),
       .halted    (halted),
       .active    (active),

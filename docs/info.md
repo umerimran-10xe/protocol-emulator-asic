@@ -37,6 +37,11 @@ Three things set it apart from a conventional bit-bang engine:
 - **Timing is by deadline, not by delay.** `WAITU` waits until the shared cycle
   counter reaches an absolute target. Adding instructions before it does not
   move when it fires, so jitter cannot accumulate across a long frame.
+- **It can measure, not just replay.** Arming edge capture records the pin
+  state and the exact cycle of every change into a 16-entry FIFO. A program can
+  read those timestamps back and work out a pulse width or a bit period it was
+  never told — which is what it takes to talk to a device whose timing you do
+  not know in advance.
 
 Target protocols: **UART, SPI and I2C** first, with JTAG, SWD and PS/2 reachable
 from the same instruction set. Low-speed USB and 10Mbit Ethernet are stretch
@@ -45,9 +50,9 @@ goals bounded by the achievable clock rate.
 This design targets the IHP CMOS5L 130nm process at 6x4 tiles
 (1289.28 x 710.64 um) with a 50 MHz clock.
 
-> **Status:** first working increment -- one state machine, the full instruction
-> set, and the configuration port. Edge capture and the additional state
-> machines are next. See `docs/architecture.md` for the measured area position.
+> **Status:** one state machine, the full instruction set, the configuration
+> port and timestamped edge capture. Additional state machines are next. See
+> `docs/architecture.md` for the measured area position.
 
 ## How to test
 

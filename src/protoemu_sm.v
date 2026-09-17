@@ -29,6 +29,14 @@ module protoemu_sm (
 
     input  wire [`PE_CYC_W-1:0]  cycle,      // shared free-running counter
 
+    // timestamped edge capture
+    output reg                   cap_arm,
+    output reg  [`PE_NPIN-1:0]   cap_arm_mask,
+    output reg                   cap_pop,
+    input  wire                  cap_ready,
+    input  wire [`PE_NPIN-1:0]   cap_pins,
+    input  wire [`PE_CYC_W-1:0]  cap_time,
+
     output reg                   irq,
     output wire                  halted,
     output wire                  active,
@@ -111,7 +119,7 @@ module protoemu_sm (
       `PE_CND_YZ:     branch_taken = (y == 8'd0);
       `PE_CND_FAULT:  branch_taken = fault;
       `PE_CND_NFAULT: branch_taken = !fault;
-      default:        branch_taken = 1'b0;   // PE_CND_NEVER
+      default:        branch_taken = cap_ready;   // PE_CND_CAPRDY
     endcase
   end
 
@@ -165,6 +173,7 @@ module protoemu_sm (
       pinmask <= {`PE_NPIN{1'b0}}; drivemode <= {`PE_NPIN{1'b0}};
       pinval <= {`PE_NPIN{1'b0}};   // PINMASK=0 is what releases the pins
       fault <= 1'b0; irq <= 1'b0;
+      cap_arm <= 1'b0; cap_arm_mask <= {`PE_NPIN{1'b0}}; cap_pop <= 1'b0;
       wp_mode <= 2'd0; wp_pin <= 3'd0; wp_timeout <= 8'd0; wp_prev <= 1'b0;
       sh_dir <= 1'b0; sh_pin <= 3'd0; sh_idx <= 4'd0;
       sh_left <= 5'd0; sh_delay <= 5'd0;
@@ -172,7 +181,9 @@ module protoemu_sm (
       cfg_clkpin <= 3'd0; cfg_clkidle <= 1'b0;
       cfg_msbfirst <= 1'b1; cfg_clken <= 1'b0;
     end else begin
-      irq <= 1'b0;                  // irq is a one-cycle pulse
+      irq     <= 1'b0;              // irq is a one-cycle pulse
+      cap_arm <= 1'b0;              // so are the capture strobes
+      cap_pop <= 1'b0;
       if (advance) begin
         case (st)
           // ------------------------------------------------ fetch/exec ---
@@ -269,6 +280,17 @@ module protoemu_sm (
                   end
                   `PE_SYS_SYNC:     tgt   <= cycle;
                   `PE_SYS_CLRFAULT: fault <= 1'b0;
+                  `PE_SYS_CAPARM: begin
+                    cap_arm      <= 1'b1;
+                    cap_arm_mask <= sys_arg[`PE_NPIN-1:0];
+                  end
+                  `PE_SYS_CAPPOP: if (cap_ready) begin
+                    // Reading an empty FIFO does nothing, so a program pairs
+                    // this with JMP CAPRDY rather than guessing.
+                    cap_pop <= 1'b1;
+                    x       <= cap_pins;
+                    shreg   <= cap_time;
+                  end
                   default: ;                        // PE_SYS_NOP
                 endcase
               end
@@ -383,6 +405,6 @@ module protoemu_sm (
 `endif
 
   // sh_left's top bit and the unused decode fields are intentionally unread
-  wire _unused = &{1'b0, sys_arg[9:1], alu_imm[8], imem_data[9:7], 1'b0};
+  wire _unused = &{1'b0, sys_arg[9:`PE_NPIN], alu_imm[8], imem_data[9:7], 1'b0};
 
 endmodule

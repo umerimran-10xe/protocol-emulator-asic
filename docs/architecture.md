@@ -101,7 +101,7 @@ the bottom of `src/protoemu_sm.v`, next to the logic they constrain.
 | An armed `WAITP` always leaves the wait when its timeout expires | The timeout is the whole point; a wait that could hang is worse than no timeout |
 | Nothing moves when neither running nor stepping | `run`/`step` really are a freeze control |
 
-**Directed tests (cocotb) — running.** 18 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 20 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
@@ -160,11 +160,18 @@ near 40% of cell area against LibreLane's 60% density target, so the flexible
 option is also the affordable one. The build order is still 1 -> 2 -> 4, with
 `area.sh` and a hardening run gating each step rather than a single jump.
 
-**Timestamped edge capture earns its place.** A 16-entry FIFO of
-`{pin[2:0], timestamp[15:0], direction}` is 320 bits, which is 15,700 um2, or
-**1.7% of the die**. That is the cheapest of the four differentiators and the
-only one that lets the chip measure a protocol it was not told about. It goes
-into the next increment.
+**Timestamped edge capture earns its place — and cost more than estimated.**
+It is built. The estimate here was 320 bits for `{pin[2:0], timestamp, dir}`,
+1.7% of the die. The built version records the **whole pin state** rather than
+which pin moved, so simultaneous edges cost one entry instead of being lost:
+16 entries of `{pins[7:0], timestamp[15:0]}` is 384 bits, and with the FIFO
+pointers, edge detection and read muxes the measured cost is **+34,658 um2,
+3.8% of the die** — synthesis went from 24.0% to 27.8%.
+
+Twice the estimate, and still worth it: it is the only feature that lets the
+chip measure a protocol it was not told about, and `scripts/timing.sh` confirms
+it adds nothing to the critical path, which still runs PC to program store to
+decode.
 
 **Clock rate stays at 50 MHz** until the design is large enough for the number
 to mean something. See `docs/baseline-results.md` for the slack the current

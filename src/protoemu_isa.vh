@@ -37,7 +37,7 @@
 `define PE_CND_YZ     3'd4  // Y == 0
 `define PE_CND_FAULT  3'd5  // a WAITP timeout is pending; taking the branch clears it
 `define PE_CND_NFAULT 3'd6  // no fault pending
-`define PE_CND_NEVER  3'd7  // reserved / no-op branch
+`define PE_CND_CAPRDY 3'd7  // the capture FIFO has an entry waiting
 
 // --------------------------------------------------------- ALU functions ---
 `define PE_ALU_XINC  4'd0
@@ -70,5 +70,10 @@
 `define PE_SYS_IRQ      3'd2  // pulse irq; arg[0] also halts
 `define PE_SYS_SYNC     3'd3  // TGT <- CYCLE, re-anchoring the deadline to now
 `define PE_SYS_CLRFAULT 3'd4
+`define PE_SYS_CAPARM   3'd5  // arm edge capture; arg[7:0] selects the pins
+`define PE_SYS_CAPPOP   3'd6  // X <- captured pin state, SHIFT <- its timestamp
+
+// ------------------------------------------------------------- capture ----
+`define PE_CAP_DEPTH_W  4     // 16 entries of {pins[7:0], timestamp[15:0]}
 
 `endif

@@ -72,8 +72,8 @@ against RTL, and the design hardens cleanly.
 
 | | |
 |---|---|
-| Cell area | 219,763 um2, **24.0%** of the 6x4 die |
-| Tests | 18 cocotb tests passing, including decoded UART and I2C traffic |
+| Cell area | 254,421 um2, **27.8%** of the 6x4 die (synthesis) |
+| Tests | 20 cocotb tests passing, including decoded UART and I2C traffic |
 | Random | randomised programs checked cycle-for-cycle against a Python model |
 | Formal | 6 safety properties proved by k-induction |
 | Lint | clean, zero warnings |

@@ -19,7 +19,7 @@ module tt_um_umerimran_protoemu (
     input  wire       rst_n     // reset_n - low to reset
 );
 
-  wire       cfg_miso, irq, halted, active;
+  wire       cfg_miso, irq, halted, active, cap_overflow;
   wire [2:0] trace;
 
   protoemu_top u_top (
@@ -31,19 +31,20 @@ module tt_um_umerimran_protoemu (
       .cfg_miso (cfg_miso),
       .run_i    (ui_in[3]),
       .step_i   (ui_in[7]),
+      .trig_i   (ui_in[4]),
       .pin_i    (uio_in),
       .pin_o    (uio_out),
       .pin_oe   (uio_oe),
+      .cap_overflow (cap_overflow),
       .irq      (irq),
       .halted   (halted),
       .active   (active),
       .trace    (trace)
   );
 
-  assign uo_out = {halted, trace, 1'b0, active, irq, cfg_miso};
+  assign uo_out = {halted, trace, cap_overflow, active, irq, cfg_miso};
 
-  // ui_in[6:4] (trig_in, aux_in0, aux_in1) are reserved for the trigger and
-  // capture block landing in the next increment.
-  wire _unused = &{ena, ui_in[6:4], 1'b0};
+  // ui_in[6:5] (aux_in0, aux_in1) are still reserved.
+  wire _unused = &{ena, ui_in[6:5], 1'b0};
 
 endmodule
