@@ -1,11 +1,20 @@
 name: gds
 
-# Hardening takes ~15 minutes, so it does not run on every push. It runs when
-# something that can actually change the layout changes -- RTL, the LibreLane
-# config, the project definition -- or on demand via workflow_dispatch.
-# Docs, scripts and README commits no longer cost a hardening run.
+# Hardening costs about three hours for this design, so it runs as rarely as it
+# usefully can: only on main, and only when something that can actually change
+# the layout changes -- RTL, the LibreLane config, the project definition.
+#
+# main only, because main is what the submission is built from, and a run on a
+# feature branch just duplicates the run the merge will trigger anyway. Use
+# workflow_dispatch to harden a branch on demand before merging something
+# risky.
+#
+# info.yaml is in the list because it sets the tile count, the pinout and the
+# top module, all of which change the layout.
 on:
   push:
+    branches:
+      - main
     paths:
       - 'src/**'
       - 'info.yaml'
