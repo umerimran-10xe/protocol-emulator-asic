@@ -79,7 +79,7 @@ others at a barrier.
 | Tests | 27 cocotb tests passing, including decoded UART, I2C and two-machine full-duplex SPI |
 | Timing | pre-layout slack **+5.03 ns, met** |
 | Random | randomised programs checked cycle-for-cycle against a chip-level Python model |
-| Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines |
+| Formal | 5 tasks: per-machine safety and edge capture by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines — all mutation-checked |
 | Lint | clean, zero warnings |
 
 Next: more protocols across machines, and the stretch goals — low-speed USB and

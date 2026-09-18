@@ -54,6 +54,6 @@ Module protoemu_barrier directly or indirectly contains formal properties -> set
 6.2. Executing DEMUXMAP pass.
 Creating SMT-LIBv2 representation of module protoemu_barrier.
 
-End of script. Logfile hash: 26f87c19cb, time: 0.00s, user: 0.00s, system: 0.01s, MEM: 16.62 MB peak
+End of script. Logfile hash: 26f87c19cb, time: 0.00s, user: 0.01s, system: 0.00s, MEM: 16.21 MB peak
 Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
-Time spent: 48% 2x write_smt2 (0 sec), 33% 2x read_rtlil (0 sec), ...
+Time spent: 45% 2x write_smt2 (0 sec), 34% 2x read_rtlil (0 sec), ...

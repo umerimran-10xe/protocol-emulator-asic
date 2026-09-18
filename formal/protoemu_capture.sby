@@ -1,0 +1,20 @@
+# Edge-capture proofs. Sequential, so `prove` runs bounded model checking and
+# then k-induction -- a pass covers every reachable state.
+#
+# NRD is overridden to 4, one cursor per machine, which is where the properties
+# about cursors not passing the writer stop being obvious.
+[options]
+mode prove
+depth 20
+
+[engines]
+smtbmc yices
+
+[script]
+read_verilog -formal -I. protoemu_capture.v
+chparam -set NRD 4 protoemu_capture
+prep -top protoemu_capture
+
+[files]
+../src/protoemu_capture.v
+../src/protoemu_isa.vh
