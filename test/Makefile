@@ -12,6 +12,11 @@ ifneq ($(GATES),yes)
 
 # RTL simulation:
 SIM_BUILD				= sim_build/rtl
+# The ISA header is listed as a source even though every module `include`s it,
+# so that changing it invalidates the simulator's build cache. Without this a
+# PE_NSM or PE_PC_W change silently re-runs the previously compiled design --
+# which looks exactly like a passing test suite.
+VERILOG_SOURCES += $(SRC_DIR)/protoemu_isa.vh
 VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
 
 else

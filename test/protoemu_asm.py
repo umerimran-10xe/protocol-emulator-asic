@@ -30,8 +30,9 @@ WP_LOW, WP_HIGH, WP_RISE, WP_FALL = range(4)
 
 BAR_W = 4
 
-PC_W = 7
+PC_W = 6
 IMEM_DEPTH = 1 << PC_W
+NSM = 4                 # state machines sharing the store and the pins
 
 
 def _fit(name, value, bits):

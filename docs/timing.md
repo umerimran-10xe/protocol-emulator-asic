@@ -42,7 +42,13 @@ to come down: either pipeline the fetch, which costs the one-instruction-per-
 cycle contract that makes program timing readable, or shrink the read mux by
 giving each machine a smaller window into the store.
 
-Neither is needed yet. Both are cheaper to decide with `scripts/timing.sh` in
+**This is what was attacked.** `docs/scaling.md` halved the store to 64 entries
+to fit four machines, and the read mux shrank with it: pre-layout slack went
+from the -13.67 ns measured here to **+5.03 ns, met**, with four times the
+machines. The measurement on this page is the 128-entry, one-machine design and
+is kept as the reason the change was made.
+
+Neither of the two structural changes above is needed yet. Both are cheaper to decide with `scripts/timing.sh` in
 the loop than with a three-hour hardening run.
 
 ## The 160 max-fanout violations are the clock tree

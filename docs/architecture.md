@@ -218,18 +218,21 @@ cell area, 24.0% of the 6x4 die**, of which 51% is sequential.
 combinational read port per machine costs roughly 35,000 um2 per extra port --
 about 3.8% of the die each.
 
-**Four state machines fit, but only with a shallower store.** This section
-originally said four machines land near 40% and were comfortable. That was a
-synthesis number, before the 1.40x post-layout ratio was measured. Redone
-properly in `docs/scaling.md`: four machines with the current 128-entry store
-land at **~61%**, over the 60% density target. Four machines with a **64-entry**
-store land at ~39.6% — the same silicon as the single machine built today — and
-additionally swing pre-layout slack from -13.67 ns to +3.58 ns, because the
-store's read mux and the PC fanout driving it are the critical path.
+**Four state machines fit, but only with a shallower store — and this is now
+what is built.** This section originally said four machines land near 40% and
+were comfortable. That was a synthesis number, before the 1.40x post-layout
+ratio was measured. Redone properly in `docs/scaling.md`: four machines with a
+128-entry store land at **~61%**, over the 60% density target.
 
-The decision is therefore four machines with a 64-entry shared store: four
-machines *or* a 128-instruction program, not both. A second machine on its own
-costs 5.2% of the die and nothing in timing.
+Four machines with a **64-entry** store is the configuration that shipped.
+Measured on the built RTL: **278,865 um2, 30.4% of the die** at synthesis, and
+pre-layout slack **+5.03 ns, met** — against -12.90 ns for the single machine
+with the deeper store. Shrinking the store attacks the critical path and the
+area at once, because the store's read mux and the PC fanout driving it were
+the critical path.
+
+The trade is explicit and was taken: four machines *or* a 128-instruction
+program, not both.
 
 **Timestamped edge capture earns its place — and cost more than estimated.**
 It is built. The estimate here was 320 bits for `{pin[2:0], timestamp, dir}`,
@@ -266,7 +269,7 @@ Nothing else stalls, so a program's timing is readable from its source.
 | `src/protoemu_sm.v` | fetch, decode and execute; pin drive with per-pin open-drain |
 | `src/protoemu_arb.v` | pin ownership between machines, and conflict reporting |
 | `src/protoemu_barrier.v` | rendezvous: machines waiting on each other leave together |
-| `src/protoemu_imem.v` | 128 x 16 program store, one write port, one fetch port per machine |
+| `src/protoemu_imem.v` | 64 x 16 program store, one write port, one fetch port per machine |
 | `src/protoemu_capture.v` | timestamped edge capture: one 16-entry record, one read cursor per machine |
 | `src/protoemu_cfg.v` | SPI slave: load and read back the program store and control registers |
 | `src/protoemu_top.v` | cycle counter, input synchronisers, run/step control, the machine array |
@@ -278,7 +281,10 @@ Nothing else stalls, so a program's timing is readable from its source.
 1. **Does the shared store need a write port from the machines themselves?**
    Self-modifying programs would make adaptive protocols possible, but the
    arbitration cost across four machines is not yet measured.
-2. **How do machines synchronise with each other?** `SYS SYNC` currently only
-   re-anchors one machine's deadline. A barrier across machines is the natural
-   extension, and is what full-duplex protocols will want.
+2. ~~**How do machines synchronise with each other?**~~ Answered: `SYS BARRIER`
+   stops a machine until every machine it names is also at a barrier and
+   releases all of them on the same cycle. `src/protoemu_barrier.v` carries the
+   proofs. What is still open is the protocol work that uses it -- full-duplex
+   SPI with the transmitter and receiver on separate machines is the first case
+   the barrier was built for.
 3. **Clock rate**, once the design is large enough for timing closure to bind.

@@ -28,6 +28,11 @@ SPI_HALF = 8  # core clocks per SPI half-period; SCLK must be well under clk
 # the model cannot, and skips.
 GATES = os.environ.get("GATES") == "yes"
 
+# The last word of the store is a HALT the machines a test is not interested in
+# are pointed at. Test programs are short and load from address 0, so nothing
+# reaches it.
+PARK_ADDR = A.IMEM_DEPTH - 1
+
 
 class Host:
     """Drives ui_in as a bit-addressable register."""
@@ -92,6 +97,18 @@ class Host:
     async def set_start_pc(self, machine, address):
         await self.write_control([address], addr=machine)
 
+    async def park_others(self):
+        """Send every machine but 0 to a HALT.
+
+        Four machines all start from address 0, so a test that loads one
+        program would otherwise run it on all four at once. Machine 0 owns every
+        pin it claims, so the pins would even look right -- and the test would
+        be checking something other than what it says it checks.
+        """
+        await self.load([A.SYS(A.SYS_HALT)], addr=PARK_ADDR)
+        for machine in range(1, A.NSM):
+            await self.set_start_pc(machine, PARK_ADDR)
+
     async def start(self):
         """0->1 on run restarts the program from address 0."""
         self.set(RUN, 0)
@@ -106,7 +123,7 @@ class Host:
         raise AssertionError(f"program did not halt within {limit} cycles")
 
 
-async def setup(dut):
+async def setup(dut, park_others=True):
     cocotb.start_soon(Clock(dut.clk, 20, unit="ns").start())  # 50 MHz
     host = Host(dut)
     dut.ena.value = 1
@@ -115,6 +132,8 @@ async def setup(dut):
     await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 2)
+    if park_others:
+        await host.park_others()
     return host
 
 
@@ -124,7 +143,7 @@ async def setup(dut):
 async def test_config_readback(dut):
     """Every word written over SPI reads back unchanged."""
     host = await setup(dut)
-    words = [A.SET(0x5A, 3), A.WAITU(1234), A.JMP(A.CND_ALWAYS, 0x7F),
+    words = [A.SET(0x5A, 3), A.WAITU(1234), A.JMP(A.CND_ALWAYS, 0x3F),
              A.SYS(A.SYS_HALT), 0x0000, 0xFFFF]
     await host.load(words)
     got = await host.readback(len(words))
@@ -631,7 +650,7 @@ async def test_i2c_start_and_address_on_an_open_drain_bus(dut):
     assert got == address, f"bus saw {got:#04x}, program sent {address:#04x}"
 
 
-def _random_program(rng, length):
+def _random_program(rng, length, base=0):
     """A random but useful instruction stream.
 
     Fully uniform 16-bit words would mostly be long WAITs and immediate halts,
@@ -661,7 +680,8 @@ def _random_program(rng, length):
         elif pick == 6 and len(program) > 3:
             # Branch strictly inside the program, so control can never reach an
             # address the loader did not write.
-            program.append(A.JMP(rng.randrange(8), rng.randrange(3, len(program))))
+            program.append(A.JMP(rng.randrange(8),
+                                 rng.randrange(base + 3, base + len(program))))
         elif pick == 7:
             program.append(A.ALU(rng.randrange(13), rng.randrange(256)))
         elif pick == 8:
@@ -694,15 +714,27 @@ def _random_program(rng, length):
 
 @cocotb.test(skip=GATES)
 async def test_random_programs_match_the_model(dut):
-    """Run randomised instruction streams through the RTL and through the
+    """Run four randomised instruction streams through the RTL and through the
     Python model in lockstep, comparing the pins every cycle.
 
-    The directed tests check the behaviours we thought to ask about. This
-    checks the ones we did not.
+    The directed tests check the behaviours we thought to ask about. This checks
+    the ones we did not -- and since the flip to four machines, it checks them
+    with the machines interfering: overlapping `PINMASK`s resolved by the
+    arbiter, barriers naming machines that may already have halted, and four
+    cursors into one capture record.
 
-    The model is fed `pin_s1`, the synchronised sample the state machine itself
-    reads, rather than `uio_in`. The two input flops are trivial and separately
+    Each machine gets a sixteen-word slot of the store and starts at the top of
+    it. The whole store is written every trial, zeros included, so nothing a
+    machine reads is left over from the trial before -- the model has no way to
+    know what a word the loader never wrote would hold.
+
+    The model is fed `pin_s1`, the synchronised sample the machines themselves
+    read, rather than `uio_in`. The two input flops are trivial and separately
     covered; feeding them in here would only add bookkeeping to the test.
+
+    Skipped in gate-level simulation: it reads `pin_s1`, the cycle counter and
+    the machines' registers by name to feed and report on the model, and none of
+    those names survive synthesis.
     """
     import os
     import random
@@ -712,41 +744,67 @@ async def test_random_programs_match_the_model(dut):
     trials = int(os.environ.get("PROTOEMU_TRIALS", "20"))
     seed = int(os.environ.get("PROTOEMU_SEED", "0xC0FFEE"), 0)
 
-    host = await setup(dut)
+    host = await setup(dut, park_others=False)
     rng = random.Random(seed)
     top = dut.user_project.u_top
-    sm = top.g_sm[0].u_sm
+    # How a simulator exposes the instances inside a generate loop varies, and
+    # this is only used to say which register diverged. Fall back rather than
+    # turn a reporting detail into a failure.
+    def _machine_handle(index):
+        try:
+            return top.g_sm[index].u_sm
+        except (IndexError, AttributeError, KeyError):
+            pass
+        try:
+            return top._id(f"g_sm[{index}]", extended=False).u_sm
+        except Exception:                                    # noqa: BLE001
+            return None
 
-    def mismatch(trial, cycle, model, program):
-        m0 = model.machines[0]
+    sms = [_machine_handle(i) for i in range(A.NSM)]
+    slot = A.IMEM_DEPTH // A.NSM
+    starts = [i * slot for i in range(A.NSM)]
+
+    def mismatch(trial, cycle, model, store):
         got = (int(dut.uio_out.value), int(dut.uio_oe.value),
                (int(dut.uo_out.value) >> HALTED) & 1)
         want = (model.pin_out, model.pin_oe, int(model.halted))
         if got == want:
             return None
-        return (
-            f"trial {trial}, cycle {cycle}: "
-            f"RTL out={got[0]:#04x} oe={got[1]:#04x} halted={got[2]}, "
-            f"model out={want[0]:#04x} oe={want[1]:#04x} halted={want[2]}\n"
-            f"  RTL   pc={int(sm.pc.value)} st={int(sm.st.value)} "
-            f"pinval={int(sm.pinval.value):#04x} pinmask={int(sm.pinmask.value):#04x} "
-            f"drivemode={int(sm.drivemode.value):#04x} shreg={int(sm.shreg.value):#06x}\n"
-            f"  model pc={m0.pc} st={m0.st} "
-            f"pinval={m0.pinval:#04x} pinmask={m0.pinmask:#04x} "
-            f"drivemode={m0.drivemode:#04x} shreg={m0.shreg:#06x}\n"
-            f"  program {[hex(w) for w in program]}")
+        lines = [f"trial {trial}, cycle {cycle}: "
+                 f"RTL out={got[0]:#04x} oe={got[1]:#04x} halted={got[2]}, "
+                 f"model out={want[0]:#04x} oe={want[1]:#04x} halted={want[2]}"]
+        for i, (sm, m) in enumerate(zip(sms, model.machines)):
+            if sm is not None:
+                lines.append(
+                    f"  m{i} RTL   pc={int(sm.pc.value)} st={int(sm.st.value)} "
+                    f"pinval={int(sm.pinval.value):#04x} "
+                    f"pinmask={int(sm.pinmask.value):#04x} "
+                    f"drivemode={int(sm.drivemode.value):#04x} "
+                    f"shreg={int(sm.shreg.value):#06x}")
+            lines.append(
+                f"  m{i} model pc={m.pc} st={m.st} "
+                f"pinval={m.pinval:#04x} pinmask={m.pinmask:#04x} "
+                f"drivemode={m.drivemode:#04x} shreg={m.shreg:#06x}")
+        lines.append(f"  store {[hex(w) for w in store]}")
+        return "\n".join(lines)
 
     for trial in range(trials):
-        program = _random_program(rng, rng.randrange(12, 28))
-        await host.load(program)
+        store = [0] * A.IMEM_DEPTH
+        for i, base in enumerate(starts):
+            program = _random_program(rng, rng.randrange(8, slot - 1), base=base)
+            store[base:base + len(program)] = program
 
-        model = PM.ProtoEmu(program)
+        await host.load(store)
+        for i, base in enumerate(starts):
+            await host.set_start_pc(i, base)
+
+        model = PM.ProtoEmu(store, nsm=A.NSM, start_pc=starts)
         dut.uio_in.value = 0
         await host.start()
 
         # The cycle counter reads 0 for several edges before the run edge, so
         # align on the transition into 1 -- that is the edge at which the
-        # machine retired its first instruction, with the counter reading 0.
+        # machines retired their first instruction, with the counter reading 0.
         for _ in range(16):
             pin_in = int(top.pin_s1.value)
             await RisingEdge(dut.clk)
@@ -757,10 +815,10 @@ async def test_random_programs_match_the_model(dut):
             raise AssertionError("cycle counter never started")
 
         model.step(pin_in, 0)
-        problem = mismatch(trial, 0, model, program)
+        problem = mismatch(trial, 0, model, store)
         assert problem is None, problem
 
-        for cycle in range(1, 220):
+        for cycle in range(1, 300):
             if model.halted:
                 break
             pin_in = int(top.pin_s1.value)
@@ -772,14 +830,14 @@ async def test_random_programs_match_the_model(dut):
             await Timer(1, unit="ns")
 
             model.step(pin_in, cycle)
-            problem = mismatch(trial, cycle, model, program)
+            problem = mismatch(trial, cycle, model, store)
             assert problem is None, problem
 
         host.set(RUN, 0)
         await ClockCycles(dut.clk, 3)
 
-    dut._log.info(f"{trials} random programs (seed {seed:#x}) matched the model "
-                  "cycle for cycle")
+    dut._log.info(f"{trials} sets of {A.NSM} random programs (seed {seed:#x}) "
+                  "matched the model cycle for cycle")
 
 
 async def _read_shifted_word(dut, clk_pin, data_pin, nbits, limit=4000):

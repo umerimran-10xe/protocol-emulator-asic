@@ -7,7 +7,7 @@
 `define PROTOEMU_ISA_VH
 
 `define PE_IW      16   // instruction width
-`define PE_PC_W     7   // 128-instruction program store
+`define PE_PC_W     6   // 64-instruction program store
 `define PE_NPIN     8   // protocol pins (uio[7:0])
 `define PE_CYC_W   16   // free-running cycle counter / deadline width
 
@@ -80,7 +80,7 @@
 `define PE_BAR_W        4
 
 // ------------------------------------------------------------- capture ----
-`define PE_NSM          1     // state machines sharing the store and pins
+`define PE_NSM          4     // state machines sharing the store and pins
 
 // ----------------------------------------------------- control registers --
 // Written over SPI with the control bit set in the frame header.

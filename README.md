@@ -68,22 +68,24 @@ Each rung catches what the one below it cannot, and CI stays authoritative.
 
 ## Status
 
-One state machine executing the full instruction set, a 128 x 16 program store,
-an SPI configuration port, timestamped edge capture, and the pin arbitration,
-capture ownership and rendezvous the other three machines will need.
+**Four state machines**, sharing a 64 x 16 program store, an eight-pin block and
+one timestamped edge-capture record. Each machine has its own start address, its
+own pins by ownership, its own cursor into the capture record, and can meet the
+others at a barrier.
 
 | | |
 |---|---|
-| Cell area | 256,780 um2, **28.0%** of the 6x4 die (synthesis) |
+| Cell area | 278,865 um2, **30.4%** of the 6x4 die (synthesis) |
 | Tests | 26 cocotb tests passing, including decoded UART and I2C traffic |
+| Timing | pre-layout slack **+5.03 ns, met** |
 | Random | randomised programs checked cycle-for-cycle against a chip-level Python model |
 | Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines |
 | Lint | clean, zero warnings |
 
-Next: the flip itself — `PE_NSM` 1 to 4 and the program store 128 to 64
-entries. Measured on the real RTL, four machines with a 64-entry store come to 30.4% at synthesis
-with positive pre-layout slack;
-`docs/scaling.md` has the numbers and what is left.
+Next: protocols that use more than one machine — full-duplex SPI with the
+transmitter and receiver on separate machines is the first one the barrier was
+built for. `docs/scaling.md` has how the machine count and store depth were
+settled.
 
 ## License
 
