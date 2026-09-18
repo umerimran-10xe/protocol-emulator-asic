@@ -190,17 +190,37 @@ other test looks only at the pins and runs against the netlist unchanged.
 The default of 20 programs keeps the suite a few seconds; the soak is for
 before a merge that touches the datapath.
 
-**Protocol conformance — started.** Two protocols so far, both decoded by
-models written from the protocol rather than from the program under test:
+**Protocol conformance — running.** Three protocols, all decoded by models
+written from the protocol rather than from the program under test:
 
 - a 1 Mbaud UART frame, recovered by a receiver that finds the start bit and
   samples at mid-bit;
 - an I2C START and address byte on a bus modelled with pull-ups, where a line
   reads low only while the emulator actively drives it -- so the model would
-  catch the emulator driving high, not just report the wrong byte.
+  catch the emulator driving high, not just report the wrong byte;
+- **full-duplex SPI split across two machines**, against a target that samples
+  MOSI on each active edge and presents the next MISO bit on each idle edge.
 
-SPI against a third-party model is next. These are the tests that matter most:
-they show protocols the hardware was never told about, expressed as programs.
+The SPI test is the one the multi-machine work was for. Machine 0 owns SCLK and
+MOSI and shifts a byte out; machine 1 owns none of those pins -- the arbiter
+would not let it -- and shifts the target's byte in off MISO, sampling on the
+edges machine 0 generates. The only thing keeping the two shift engines in step
+is that `SYS BARRIER` released them on the same cycle.
+
+That the barrier is load-bearing is checked rather than asserted. Machine 1
+waits on an external ready line first, at a time no program can predict, so
+instruction counting cannot align the two. Replace the barriers with no-ops and
+machine 0 finishes transmitting before machine 1 starts listening: the received
+byte comes back `0xf0` instead of `0x3c`.
+
+An earlier version of this test padded machine 1 with seven no-ops instead and
+claimed the same thing, which was wrong -- at a divider of 6 the receive path
+absorbs a seven-cycle skew without noticing, and the test passed with the
+barriers removed. Worth recording, because a test that cannot fail for the
+reason it claims is worse than no test.
+
+These are the tests that matter most: they show protocols the hardware was
+never told about, expressed as programs.
 
 **Gate-level — running in CI.** The same tests re-run on the post-layout
 netlist by the `gl_test` job.

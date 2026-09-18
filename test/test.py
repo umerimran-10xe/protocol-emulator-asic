@@ -1150,3 +1150,110 @@ async def test_the_model_arbitrates_and_synchronises_four_machines(dut):
     assert left.get(0) == left.get(1) is not None, (
         f"machines 0 and 1 must leave the barrier together, left at {left}")
     dut._log.info(f"four modelled machines met at cycle {left[0]}, conflict {chip.conflict:#04x}")
+
+
+async def _spi_target_full_duplex(dut, received, tx, nbits=8,
+                                  sclk=0, mosi=1, miso=2):
+    """A full-duplex SPI target, written from the protocol rather than from the
+    program under test.
+
+    Samples MOSI on each rising edge of the emulator's generated clock and
+    presents the next MISO bit on each falling edge, with the first bit up
+    before the first edge -- which is what a real target does. Appends the bits
+    it sees to `received`.
+    """
+    out_bits = [(tx >> i) & 1 for i in range(nbits - 1, -1, -1)]
+
+    def drive(bit):
+        value = int(dut.uio_in.value)
+        dut.uio_in.value = (value | (1 << miso)) if bit else (value & ~(1 << miso))
+
+    drive(out_bits[0])
+    index = 1
+    prev = (int(dut.uio_out.value) >> sclk) & 1
+    while True:
+        await RisingEdge(dut.clk)
+        now = (int(dut.uio_out.value) >> sclk) & 1
+        if now and not prev:
+            received.append((int(dut.uio_out.value) >> mosi) & 1)
+        elif prev and not now and index < len(out_bits):
+            drive(out_bits[index])
+            index += 1
+        prev = now
+
+
+@cocotb.test()
+async def test_full_duplex_spi_across_two_machines(dut):
+    """One machine transmits while another receives, on the same clock.
+
+    This is the case `SYS BARRIER` was built for. Machine 0 owns SCLK and MOSI
+    and shifts a byte out; machine 1 owns nothing on that side of the bus and
+    shifts the target's byte in off MISO, sampling on the edges machine 0
+    generates. Neither is driving the other's pins -- the arbiter would not let
+    them -- so the only thing keeping the two shift engines in step is that they
+    started on the same cycle.
+
+    Machine 1 waits on an external line before it is ready, for a length of
+    time the program cannot know -- which is the case that makes a barrier
+    necessary rather than convenient. Counting instructions cannot align two
+    machines when one of them is waiting on the outside world. Replace the two
+    barriers with no-ops and machine 0 has finished transmitting before machine
+    1 starts listening; the received byte comes back wrong.
+
+    The received byte is shifted back out on machine 1's own pins afterwards,
+    because a register is not observable from outside the chip and pretending
+    otherwise would not be a protocol test.
+    """
+    host = await setup(dut)                 # parks machines 1 to 3
+    sent, target_sends, delay = 0xA5, 0x3C, 6
+
+    await host.load([                       # machine 0: SPI controller
+        A.LOAD(A.REG_PINMASK, 0x03),        # SCLK on pin 0, MOSI on pin 1
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.LOAD(A.REG_SHIFTCFG,
+               A.shiftcfg(clkpin=0, clkidle=0, msbfirst=1, clken=1)),
+        A.LOAD(A.REG_SHIFTDAT, sent),
+        A.BARRIER(0b0011),
+        A.SHIFT(dir_in=False, pin=1, nbits=8, delay=delay),
+        A.SYS(A.SYS_HALT),
+    ], addr=0)
+
+    await host.load([                       # machine 1: receiver and readout
+        A.LOAD(A.REG_PINMASK, 0xF0),        # its own pins, none of machine 0's
+        A.LOAD(A.REG_DRIVEMODE, 0x00),
+        A.LOAD(A.REG_SHIFTCFG,
+               A.shiftcfg(clkpin=4, clkidle=0, msbfirst=1, clken=0)),
+        # Not ready until something outside says so, at a time the program has
+        # no way to know. No amount of instruction counting aligns this.
+        A.WAITP(A.WP_HIGH, pin=3, timeout=0),
+        A.BARRIER(0b0011),
+        A.SHIFT(dir_in=True, pin=2, nbits=8, delay=delay),
+        A.LOAD(A.REG_SHIFTCFG,              # read what arrived back out
+               A.shiftcfg(clkpin=5, clkidle=0, msbfirst=1, clken=1)),
+        A.SHIFT(dir_in=False, pin=4, nbits=8, delay=3),
+        A.SYS(A.SYS_HALT),
+    ], addr=16)
+    await host.set_start_pc(1, 16)
+
+    received = []
+    dut.uio_in.value = 0
+    cocotb.start_soon(_spi_target_full_duplex(dut, received, tx=target_sends))
+    await host.start()
+
+    async def release_machine_1():
+        """Machine 1's ready line, at a time nothing in the program predicts."""
+        await ClockCycles(dut.clk, 40)
+        dut.uio_in.value = int(dut.uio_in.value) | (1 << 3)
+
+    cocotb.start_soon(release_machine_1())
+    echoed = await _read_shifted_word(dut, clk_pin=5, data_pin=4, nbits=8)
+    await host.run_until_halt(limit=4000)
+
+    assert len(received) >= 8, f"target saw {len(received)} clock edges, wanted 8"
+    got = int("".join(str(b) for b in received[:8]), 2)
+    assert got == sent, (
+        f"machine 0 sent {got:#04x}, meant to send {sent:#04x}")
+    assert echoed == target_sends, (
+        f"machine 1 received {echoed:#04x}, target sent {target_sends:#04x}")
+    dut._log.info(f"full duplex: sent {sent:#04x}, received {echoed:#04x}, "
+                  "on one clock across two machines")

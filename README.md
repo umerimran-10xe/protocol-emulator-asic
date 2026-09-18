@@ -76,16 +76,15 @@ others at a barrier.
 | | |
 |---|---|
 | Cell area | 278,865 um2, **30.4%** of the 6x4 die (synthesis) |
-| Tests | 26 cocotb tests passing, including decoded UART and I2C traffic |
+| Tests | 27 cocotb tests passing, including decoded UART, I2C and two-machine full-duplex SPI |
 | Timing | pre-layout slack **+5.03 ns, met** |
 | Random | randomised programs checked cycle-for-cycle against a chip-level Python model |
 | Formal | 6 per-machine properties by k-induction, plus exhaustive pin arbitration, cross-machine non-interference and rendezvous at four machines |
 | Lint | clean, zero warnings |
 
-Next: protocols that use more than one machine — full-duplex SPI with the
-transmitter and receiver on separate machines is the first one the barrier was
-built for. `docs/scaling.md` has how the machine count and store depth were
-settled.
+Next: more protocols across machines, and the stretch goals — low-speed USB and
+10Mbit Ethernet. `docs/scaling.md` has how the machine count and store depth
+were settled.
 
 ## License
 

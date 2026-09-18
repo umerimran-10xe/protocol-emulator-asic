@@ -382,6 +382,6 @@ Module protoemu_barrier directly or indirectly contains formal properties -> set
 6. Executing RTLIL backend.
 Output filename: ../model/design.il
 
-End of script. Logfile hash: aec5247767, time: 0.03s, user: 0.03s, system: 0.01s, MEM: 19.59 MB peak
+End of script. Logfile hash: aec5247767, time: 0.03s, user: 0.04s, system: 0.01s, MEM: 19.30 MB peak
 Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
-Time spent: 32% 1x chparam (0 sec), 13% 5x opt_clean (0 sec), ...
+Time spent: 33% 1x chparam (0 sec), 12% 5x opt_clean (0 sec), ...
