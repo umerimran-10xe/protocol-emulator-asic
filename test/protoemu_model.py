@@ -15,7 +15,7 @@ NPIN = 8
 MASK8 = 0xFF
 MASK16 = 0xFFFF
 
-ST_EXEC, ST_DELAY, ST_WAITP, ST_WAITU, ST_SHIFT, ST_HALT = range(6)
+ST_EXEC, ST_DELAY, ST_WAITP, ST_WAITU, ST_SHIFT, ST_HALT, ST_BAR = range(7)
 
 
 def _bit(value, index):
@@ -156,6 +156,12 @@ class ProtoEmu:
                 self.st = ST_EXEC
         elif self.st == ST_SHIFT:
             self._shift(pin_in)
+        elif self.st == ST_BAR:
+            # One machine is its own only participant, and a mask naming
+            # machines that were never built drops to nothing, so the barrier
+            # always releases on the next cycle here. The interesting case
+            # needs more than one machine, and lives in formal/.
+            self.st = ST_EXEC
         # ST_HALT and anything unreachable: hold
 
     def _wait_pin(self, pin_in):
@@ -270,6 +276,8 @@ class ProtoEmu:
                 self.cap_rd = 0
                 self.cap_overflow = 0
                 self.cap_prev = pin_in
+            elif fn == A.SYS_BARRIER:
+                self.st = ST_BAR
             elif fn == A.SYS_CAPPOP and self.cap_rd < len(self.cap_record):
                 pins, stamp = self.cap_record[self.cap_rd]
                 self.cap_rd += 1

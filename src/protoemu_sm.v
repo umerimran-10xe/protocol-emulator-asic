@@ -31,6 +31,11 @@ module protoemu_sm (
 
     input  wire [`PE_CYC_W-1:0]  cycle,      // shared free-running counter
 
+    // rendezvous with the other machines
+    output wire                  bar_req,    // stopped at a barrier
+    output reg  [`PE_BAR_W-1:0]  bar_mask,   // the machines it is waiting for
+    input  wire                  bar_go,     // all of them are here
+
     // timestamped edge capture
     output reg                   cap_arm,
     output reg  [`PE_NPIN-1:0]   cap_arm_mask,
@@ -51,7 +56,8 @@ module protoemu_sm (
              ST_WAITP = 3'd2,
              ST_WAITU = 3'd3,
              ST_SHIFT = 3'd4,
-             ST_HALT  = 3'd5;
+             ST_HALT  = 3'd5,
+             ST_BAR   = 3'd6;
 
   reg [2:0]              st;
   reg [`PE_PC_W-1:0]     pc;
@@ -82,6 +88,7 @@ module protoemu_sm (
 
   assign imem_addr = pc;
   assign pin_claim = pinmask;
+  assign bar_req   = (st == ST_BAR);
   assign halted    = (st == ST_HALT);
   assign active    = (st != ST_HALT);
   assign trace     = st;
@@ -175,7 +182,7 @@ module protoemu_sm (
       tgt <= {`PE_CYC_W{1'b0}};
       pinmask <= {`PE_NPIN{1'b0}}; drivemode <= {`PE_NPIN{1'b0}};
       pinval <= {`PE_NPIN{1'b0}};   // PINMASK=0 is what releases the pins
-      fault <= 1'b0; irq <= 1'b0;
+      fault <= 1'b0; irq <= 1'b0; bar_mask <= {`PE_BAR_W{1'b0}};
       cap_arm <= 1'b0; cap_arm_mask <= {`PE_NPIN{1'b0}}; cap_pop <= 1'b0;
       wp_mode <= 2'd0; wp_pin <= 3'd0; wp_timeout <= 8'd0; wp_prev <= 1'b0;
       sh_dir <= 1'b0; sh_pin <= 3'd0; sh_idx <= 4'd0;
@@ -287,6 +294,12 @@ module protoemu_sm (
                     cap_arm      <= 1'b1;
                     cap_arm_mask <= sys_arg[`PE_NPIN-1:0];
                   end
+                  `PE_SYS_BARRIER: begin
+                    // Stop here until every machine named in the mask is also
+                    // stopped at a barrier. They all leave on the same cycle.
+                    bar_mask <= sys_arg[`PE_BAR_W-1:0];
+                    st       <= ST_BAR;
+                  end
                   `PE_SYS_CAPPOP: if (cap_ready) begin
                     // Reading an empty FIFO does nothing, so a program pairs
                     // this with JMP CAPRDY rather than guessing.
@@ -350,6 +363,9 @@ module protoemu_sm (
             end
           end
 
+          // ------------------------------------------------- rendezvous ---
+          ST_BAR: if (bar_go) st <= ST_EXEC;
+
           // ST_HALT, and any encoding that cannot be reached: hold everything.
           // Without this, a halted machine falls into the shift datapath and
           // keeps driving pins.
@@ -385,9 +401,9 @@ module protoemu_sm (
     end
   endgenerate
 
-  // The state register only ever holds a defined state. ST_HALT is the highest
-  // encoding, so this also proves nothing reaches the unused 6 and 7.
-  always @(posedge clk) if (f_past_valid) assert (st <= ST_HALT);
+  // The state register only ever holds a defined state. ST_BAR is the highest
+  // encoding, so this also proves nothing reaches the unused 7.
+  always @(posedge clk) if (f_past_valid) assert (st <= ST_BAR);
 
   // A halted machine holds its pins and stays halted until it is restarted.
   always @(posedge clk)

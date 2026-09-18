@@ -1,0 +1,59 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
+
+-- Executing script file `design_smt2.ys' --
+
+1. Executing RTLIL frontend.
+Input filename: design_prep.il
+
+2. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `protoemu_barrier'. Setting top module to protoemu_barrier.
+
+2.1. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+
+2.2. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+Removed 0 unused modules.
+Module protoemu_barrier directly or indirectly contains formal properties -> setting "keep" attribute.
+
+3. Executing FORMALFF pass.
+
+4. Executing DFFUNMAP pass (unmap clock enable and synchronous reset from FFs).
+
+5. Printing statistics.
+
+=== protoemu_barrier ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      115 wires
+      166 wire bits
+        9 public wires
+       48 public wire bits
+        4 ports
+       28 port bits
+      151 cells
+        4   $and
+       40   $assert
+       28   $eq
+       38   $logic_and
+        4   $logic_or
+       36   $mux
+        1   $or
+
+6. Executing SMT2 backend.
+
+6.1. Executing BMUXMAP pass.
+
+6.2. Executing DEMUXMAP pass.
+Creating SMT-LIBv2 representation of module protoemu_barrier.
+
+End of script. Logfile hash: 26f87c19cb, time: 0.00s, user: 0.01s, system: 0.00s, MEM: 16.61 MB peak
+Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
+Time spent: 47% 2x write_smt2 (0 sec), 34% 2x read_rtlil (0 sec), ...

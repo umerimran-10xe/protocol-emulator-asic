@@ -221,6 +221,8 @@ module protoemu_top (
   wire [`PE_NSM*`PE_NPIN-1:0] sm_claim, sm_out, sm_oe, sm_cap_arm_mask;
   wire [`PE_NSM-1:0]          sm_cap_arm, sm_cap_pop;
   wire [`PE_NSM-1:0]          sm_irq, sm_halted, sm_active;
+  wire [`PE_NSM-1:0]          sm_bar_req, sm_bar_go;
+  wire [`PE_NSM*`PE_BAR_W-1:0] sm_bar_mask;
   wire [`PE_NSM*3-1:0]        sm_trace;
 
   genvar m;
@@ -240,6 +242,9 @@ module protoemu_top (
           .pin_out   (sm_out  [m*`PE_NPIN +: `PE_NPIN]),
           .pin_oe    (sm_oe   [m*`PE_NPIN +: `PE_NPIN]),
           .cycle     (cycle),
+          .bar_req   (sm_bar_req[m]),
+          .bar_mask  (sm_bar_mask[m*`PE_BAR_W +: `PE_BAR_W]),
+          .bar_go    (sm_bar_go[m]),
           // Every machine reads at its own pace; only machine 0 may arm,
           // because arming resets the window for everyone.
           .cap_arm      (sm_cap_arm[m]),
@@ -277,6 +282,26 @@ module protoemu_top (
   assign active = |sm_active;
   assign trace  = sm_trace[0 +: 3];
 
+  // The participant mask is `PE_BAR_W bits in the encoding however many
+  // machines are built, so a program assembled for four still decodes on one.
+  // Naming a machine that does not exist drops out of the mask here, which
+  // releases the barrier rather than hanging on a machine that can never come.
+  wire [`PE_NSM*`PE_NSM-1:0] bar_mask_built;
+  genvar b;
+  generate
+    for (b = 0; b < `PE_NSM; b = b + 1) begin : g_bar_mask
+      assign bar_mask_built[b*`PE_NSM +: `PE_NSM] =
+          sm_bar_mask[b*`PE_BAR_W +: `PE_NSM];
+    end
+  endgenerate
+
+  protoemu_barrier #(.NSM(`PE_NSM)) u_bar (
+      .req    (sm_bar_req),
+      .mask   (bar_mask_built),
+      .halted (sm_halted),
+      .go     (sm_bar_go)
+  );
+
   protoemu_arb #(.NSM(`PE_NSM), .NPIN(`PE_NPIN)) u_arb (
       .sm_mask  (sm_claim),
       .sm_out   (sm_out),
@@ -289,6 +314,6 @@ module protoemu_top (
   // Only machine 0's arm mask reaches the capture block -- the rest are dropped
   // along with the arms that carried them -- and only machine 0's state reaches
   // the trace pins, which are three bits wide however many machines there are.
-  wire _unused_cap = &{1'b0, sm_cap_arm_mask, sm_trace, 1'b0};
+  wire _unused_cap = &{1'b0, sm_cap_arm_mask, sm_trace, sm_bar_mask, 1'b0};
 
 endmodule

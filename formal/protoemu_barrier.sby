@@ -1,0 +1,16 @@
+# Rendezvous proofs. Combinational, so one BMC step covers every input
+# combination; NSM is overridden to 4, the count docs/scaling.md settled on.
+[options]
+mode bmc
+depth 1
+
+[engines]
+smtbmc yices
+
+[script]
+read_verilog -formal -I. protoemu_barrier.v
+chparam -set NSM 4 protoemu_barrier
+prep -top protoemu_barrier
+
+[files]
+../src/protoemu_barrier.v

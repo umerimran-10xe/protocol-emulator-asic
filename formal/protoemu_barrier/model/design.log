@@ -1,0 +1,387 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
+
+-- Executing script file `../model/design.ys' --
+
+1. Executing Verilog-2005 frontend: protoemu_barrier.v
+Parsing formal Verilog input from `protoemu_barrier.v' to AST representation.
+Generating RTLIL representation for module `\protoemu_barrier'.
+Successfully finished Verilog frontend.
+Parameter \NSM = 4
+
+2. Executing AST frontend in derive mode using pre-parsed AST for module `\protoemu_barrier'.
+Parameter \NSM = 4
+Generating RTLIL representation for module `$paramod\protoemu_barrier\NSM=s32'00000000000000000000000000000100'.
+
+3. Executing PREP pass.
+
+3.1. Executing HIERARCHY pass (managing design hierarchy).
+
+3.1.1. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+
+3.1.2. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+Removed 0 unused modules.
+Module protoemu_barrier directly or indirectly contains formal properties -> setting "keep" attribute.
+
+3.2. Executing PROC pass (convert processes to netlists).
+
+3.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+3.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Removed a total of 0 dead cases.
+
+3.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 0 assignments to connections.
+
+3.2.4. Executing PROC_INIT pass (extract init attributes).
+
+3.2.5. Executing PROC_ARST pass (detect async resets in processes).
+
+3.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~40 debug messages>
+
+3.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:57$36'.
+     1/1: $assert$protoemu_barrier.v:57$37_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$38'.
+     1/1: $assert$protoemu_barrier.v:62$40_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$42'.
+     1/1: $assert$protoemu_barrier.v:62$44_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$46'.
+     1/1: $assert$protoemu_barrier.v:62$48_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$50'.
+     1/1: $assert$protoemu_barrier.v:62$52_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:67$54'.
+     1/1: $assert$protoemu_barrier.v:70$59_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$60'.
+     1/1: $assert$protoemu_barrier.v:77$64_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$66'.
+     1/1: $assert$protoemu_barrier.v:77$70_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$72'.
+     1/1: $assert$protoemu_barrier.v:77$76_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$78'.
+     1/1: $assert$protoemu_barrier.v:77$82_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:57$84'.
+     1/1: $assert$protoemu_barrier.v:57$85_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$86'.
+     1/1: $assert$protoemu_barrier.v:62$88_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$90'.
+     1/1: $assert$protoemu_barrier.v:62$92_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$94'.
+     1/1: $assert$protoemu_barrier.v:62$96_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$98'.
+     1/1: $assert$protoemu_barrier.v:62$100_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:67$102'.
+     1/1: $assert$protoemu_barrier.v:70$107_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$108'.
+     1/1: $assert$protoemu_barrier.v:77$112_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$114'.
+     1/1: $assert$protoemu_barrier.v:77$118_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$120'.
+     1/1: $assert$protoemu_barrier.v:77$124_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$126'.
+     1/1: $assert$protoemu_barrier.v:77$130_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:57$132'.
+     1/1: $assert$protoemu_barrier.v:57$133_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$134'.
+     1/1: $assert$protoemu_barrier.v:62$136_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$138'.
+     1/1: $assert$protoemu_barrier.v:62$140_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$142'.
+     1/1: $assert$protoemu_barrier.v:62$144_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$146'.
+     1/1: $assert$protoemu_barrier.v:62$148_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:67$150'.
+     1/1: $assert$protoemu_barrier.v:70$155_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$156'.
+     1/1: $assert$protoemu_barrier.v:77$160_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$162'.
+     1/1: $assert$protoemu_barrier.v:77$166_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$168'.
+     1/1: $assert$protoemu_barrier.v:77$172_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$174'.
+     1/1: $assert$protoemu_barrier.v:77$178_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:57$180'.
+     1/1: $assert$protoemu_barrier.v:57$181_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$182'.
+     1/1: $assert$protoemu_barrier.v:62$184_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$186'.
+     1/1: $assert$protoemu_barrier.v:62$188_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$190'.
+     1/1: $assert$protoemu_barrier.v:62$192_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:61$194'.
+     1/1: $assert$protoemu_barrier.v:62$196_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:67$198'.
+     1/1: $assert$protoemu_barrier.v:70$203_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$204'.
+     1/1: $assert$protoemu_barrier.v:77$208_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$210'.
+     1/1: $assert$protoemu_barrier.v:77$214_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$216'.
+     1/1: $assert$protoemu_barrier.v:77$220_EN
+Creating decoders for process `\protoemu_barrier.$proc$protoemu_barrier.v:75$222'.
+     1/1: $assert$protoemu_barrier.v:77$226_EN
+
+3.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+3.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+
+3.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+3.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:57$36'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:57$36'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$38'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$38'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$42'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$42'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$46'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$46'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$50'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$50'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:67$54'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:67$54'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$60'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$60'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$66'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$66'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$72'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$72'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$78'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$78'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:57$84'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:57$84'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$86'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$86'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$90'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$90'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$94'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$94'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$98'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$98'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:67$102'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:67$102'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$108'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$108'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$114'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$114'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$120'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$120'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$126'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$126'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:57$132'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:57$132'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$134'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$134'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$138'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$138'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$142'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$142'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$146'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$146'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:67$150'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:67$150'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$156'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$156'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$162'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$162'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$168'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$168'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$174'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$174'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:57$180'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:57$180'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$182'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$182'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$186'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$186'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$190'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$190'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:61$194'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:61$194'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:67$198'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:67$198'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$204'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$204'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$210'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$210'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$216'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$216'.
+Found and cleaned up 1 empty switch in `\protoemu_barrier.$proc$protoemu_barrier.v:75$222'.
+Removing empty process `protoemu_barrier.$proc$protoemu_barrier.v:75$222'.
+Cleaned up 40 empty switches.
+
+3.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+<suppressed ~16 debug messages>
+
+3.3. Executing FUTURE pass.
+
+3.4. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+
+3.5. Executing CHECK pass (checking for obvious problems).
+Checking module protoemu_barrier...
+Found and reported 0 problems.
+
+3.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \protoemu_barrier..
+Removed 0 unused cells and 101 unused wires.
+<suppressed ~1 debug messages>
+
+3.7. Executing OPT pass (performing simple optimizations).
+
+3.7.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+
+3.7.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\protoemu_barrier'.
+Computing hashes of 189 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Computing hashes of 167 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Computing hashes of 163 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Computing hashes of 159 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Computing hashes of 155 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+<suppressed ~102 debug messages>
+Removed a total of 34 cells.
+
+3.7.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \protoemu_barrier..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~80 debug messages>
+
+3.7.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \protoemu_barrier.
+Performed a total of 0 changes.
+
+3.7.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\protoemu_barrier'.
+Computing hashes of 155 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Computing hashes of 151 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+<suppressed ~12 debug messages>
+Removed a total of 4 cells.
+
+3.7.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \protoemu_barrier..
+Removed 0 unused cells and 38 unused wires.
+<suppressed ~1 debug messages>
+
+3.7.7. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+
+3.7.8. Rerunning OPT passes. (Maybe there is more to do..)
+
+3.7.9. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \protoemu_barrier..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~72 debug messages>
+
+3.7.10. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \protoemu_barrier.
+Performed a total of 0 changes.
+
+3.7.11. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\protoemu_barrier'.
+Computing hashes of 151 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Removed a total of 0 cells.
+
+3.7.12. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \protoemu_barrier..
+
+3.7.13. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+
+3.7.14. Finished fast OPT passes. (There is nothing left to do.)
+
+3.8. Executing WREDUCE pass (reducing word size of cells).
+
+3.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \protoemu_barrier..
+
+3.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+3.11. Executing OPT pass (performing simple optimizations).
+
+3.11.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module protoemu_barrier.
+
+3.11.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\protoemu_barrier'.
+Computing hashes of 151 cells of `\protoemu_barrier'.
+Finding duplicate cells in `\protoemu_barrier'.
+Removed a total of 0 cells.
+
+3.11.3. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \protoemu_barrier..
+
+3.11.4. Finished fast OPT passes.
+
+3.12. Executing SORT pass.
+
+3.13. Printing statistics.
+
+=== protoemu_barrier ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      115 wires
+      166 wire bits
+        9 public wires
+       48 public wire bits
+        4 ports
+       28 port bits
+      151 cells
+        4   $and
+       40   $check
+       28   $eq
+       38   $logic_and
+        4   $logic_or
+       36   $mux
+        1   $or
+
+3.14. Executing CHECK pass (checking for obvious problems).
+Checking module protoemu_barrier...
+Found and reported 0 problems.
+
+4. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `protoemu_barrier'. Setting top module to protoemu_barrier.
+
+4.1. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+
+4.2. Analyzing design hierarchy..
+Top module:  \protoemu_barrier
+Removed 0 unused modules.
+Module protoemu_barrier directly or indirectly contains formal properties -> setting "keep" attribute.
+
+5. Executing jny backend.
+
+6. Executing RTLIL backend.
+Output filename: ../model/design.il
+
+End of script. Logfile hash: aec5247767, time: 0.03s, user: 0.03s, system: 0.01s, MEM: 19.36 MB peak
+Yosys 0.69+62 (git sha1 0edda7a3a-dirty, Release, Clang /usr/bin/clang++ 21.1.8)
+Time spent: 32% 1x chparam (0 sec), 12% 5x opt_clean (0 sec), ...

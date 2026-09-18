@@ -114,6 +114,19 @@ test could add on top.
 | What a pin shows is its owner's request, unchanged | Arbitration must not alter the winner's output, only choose it |
 | `conflict` is exactly "claimed by more than one machine" | It is reported to the host as a program error, so a missed or false overlap is as bad as the fight itself |
 
+`protoemu_barrier` proves the rendezvous, also combinational and also
+exhaustive in one step.
+
+| Property | Why it matters |
+|---|---|
+| Nobody leaves a barrier they are not at | The release signal must not fire at a machine that is still executing |
+| Nobody leaves before every participant has arrived or halted | This is the whole guarantee a program buys by using a barrier |
+| Nobody is left waiting once its participants are all there | Without it, a barrier that never releases would satisfy everything above |
+| Two machines waiting on the same set leave together | The reason the block exists: a transmitter and a receiver starting on the same edge |
+
+Dropping the halted term, or releasing without checking the machine is actually
+at a barrier, each make it fail.
+
 `protoemu_arb_miter` proves **cross-machine non-interference**, which is the
 property the per-machine proof cannot see. Two copies of the arbiter get the
 same claims but independently chosen drive requests, with only the *owner* of
@@ -132,13 +145,13 @@ All three tasks were mutation-checked rather than merely observed to pass —
 dropping the priority term, merging drive enables instead of selecting them,
 and suppressing the conflict report each make them fail.
 
-**Directed tests (cocotb) — running.** 24 tests in `test/test.py`, written
+**Directed tests (cocotb) — running.** 25 tests in `test/test.py`, written
 against the assembler rather than hex. They cover config load and readback, pin
 drive and masking, open-drain, both `WAITU` behaviours, `WAITP` hit and timeout,
 `SHIFT` in and out against a peripheral model that responds to the generated
 clock, counted loops, run/step control, per-machine start addresses, the
 control-register decode, the capture window's behaviour when it is read while
-filling, and a cross-check that the assembler and the Verilog header agree on
+filling, barriers that name machines which were never built, and a cross-check that the assembler and the Verilog header agree on
 all 46 ISA constants.
 
 **Constrained-random — running.** `test/protoemu_model.py` is a cycle-accurate
@@ -234,6 +247,7 @@ Nothing else stalls, so a program's timing is readable from its source.
 |---|---|
 | `src/protoemu_sm.v` | fetch, decode and execute; pin drive with per-pin open-drain |
 | `src/protoemu_arb.v` | pin ownership between machines, and conflict reporting |
+| `src/protoemu_barrier.v` | rendezvous: machines waiting on each other leave together |
 | `src/protoemu_imem.v` | 128 x 16 program store, one write port, one fetch port per machine |
 | `src/protoemu_capture.v` | timestamped edge capture: one 16-entry record, one read cursor per machine |
 | `src/protoemu_cfg.v` | SPI slave: load and read back the program store and control registers |
