@@ -104,8 +104,11 @@ correct. Before this becomes real RTL:
   them on the same cycle — which is what a transmitter and a receiver on
   separate machines need. A halted machine counts as arrived, so finishing early
   does not wedge the rest. `src/protoemu_barrier.v` carries the proofs.
-- **The reference model** needs to become multi-machine alongside the RTL, or
-  the randomised comparison stops covering the interesting part.
+- ~~**The reference model**~~ **Done.** `test/protoemu_model.py` now models the
+  chip rather than one machine: `ProtoEmu` owns the store, the arbitration, the
+  rendezvous and the capture record, and `Machine` is the state machine. It
+  takes an `nsm` and a start address per machine, so the randomised comparison
+  keeps covering the interesting part once `PE_NSM` moves.
 
 `PE_NSM` stays at 1 until the reference model lands. The machine array and the arbiter are
 already in place and parameterised, so flipping it is a one-line change to
