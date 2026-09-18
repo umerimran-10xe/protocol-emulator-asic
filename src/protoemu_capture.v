@@ -118,4 +118,61 @@ module protoemu_capture #(
     end
   end
 
+`ifdef FORMAL
+  // ------------------------------------------------------------- formal ----
+  // Sequential, so `formal/protoemu_capture.sby` runs k-induction: these hold
+  // in every reachable state, at four cursors, not just the first few cycles.
+
+  reg f_past_valid = 1'b0;
+  always @(posedge clk) f_past_valid <= 1'b1;
+
+  // Formal starts from an arbitrary state, so pin down the one thing real
+  // hardware guarantees: the block comes out of reset.
+  initial assume (!rst_n);
+
+  // The window never overruns the record it is stored in. Clocked and guarded
+  // by f_past_valid because formal starts from an arbitrary state: the
+  // invariant is established by the reset, not by the declaration.
+  always @(posedge clk)
+    if (f_past_valid) assert (wptr <= DEPTH[`PE_CAP_DEPTH_W:0]);
+
+  genvar fr;
+  generate
+    for (fr = 0; fr < NRD; fr = fr + 1) begin : g_fcap
+
+      // No cursor ever passes the writer. This is the one that matters: it is
+      // what makes `ready` mean "an entry was actually written here" rather
+      // than "the pointers happen to differ", and it holds however the four
+      // machines interleave their pops.
+      always @(posedge clk)
+        if (f_past_valid) assert (rptr[fr] <= wptr);
+
+      // Popping an empty cursor does nothing, so a program that reads without
+      // checking `ready` re-reads rather than walking off the end.
+      always @(posedge clk)
+        if (f_past_valid && $past(rst_n) && !$past(clr) && !$past(arm)
+            && $past(pop[fr]) && !$past(ready[fr]))
+          assert ($stable(rptr[fr]));
+
+      // Arming resets the window for everyone. A cursor left pointing into a
+      // record that no longer exists is exactly the race this block avoids by
+      // giving arming to one machine.
+      always @(posedge clk)
+        if (f_past_valid && $past(rst_n) && !$past(clr) && $past(arm))
+          assert (rptr[fr] == {(`PE_CAP_DEPTH_W+1){1'b0}});
+    end
+  endgenerate
+
+  always @(posedge clk)
+    if (f_past_valid && $past(rst_n) && !$past(clr) && $past(arm))
+      assert (wptr == {(`PE_CAP_DEPTH_W+1){1'b0}});
+
+  // Overflow is only ever reported because an edge arrived with the window
+  // full -- never because the pointers drifted.
+  always @(posedge clk)
+    if (f_past_valid && $past(rst_n) && !$past(clr) && !$past(overflow)
+        && overflow)
+      assert ($past(full) && $past(edge_now) && !$past(arm));
+`endif
+
 endmodule

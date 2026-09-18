@@ -87,8 +87,9 @@ if the program store needs to be deeper.
 Half the judging criteria, so it was designed up front rather than bolted on.
 Two of the four layers are running.
 
-**Formal (SymbiYosys + Yices) — running.** `./scripts/formal.sh` runs three
-tasks.
+**Formal (SymbiYosys + Yices) — running.** `./scripts/formal.sh` runs five
+tasks. Every block that holds state shared between machines is proved, and every
+proof is mutation-checked rather than merely observed to pass.
 
 `protoemu_sm` proves the per-machine properties by k-induction, so they hold in
 every reachable state rather than just the first few cycles. They live in an
@@ -126,6 +127,21 @@ exhaustive in one step.
 
 Dropping the halted term, or releasing without checking the machine is actually
 at a barrier, each make it fail.
+
+`protoemu_capture` proves the edge-capture block by k-induction, at four read
+cursors. The cursors are what make this worth proving: four machines advancing
+independently into one record is not something a directed test can cover.
+
+| Property | Why it matters |
+|---|---|
+| The window never overruns the record | The write pointer is bounded by the depth, however the edges arrive |
+| No cursor ever passes the writer | This is the one that matters: it makes `ready` mean "an entry was written here", not "the pointers happen to differ" |
+| Popping an empty cursor does nothing | A program that reads without checking `ready` re-reads rather than walking off the end |
+| Arming resets the window for every cursor | No cursor is left pointing into a record that no longer exists |
+| Overflow is only reported for an edge that arrived with the window full | Not because the pointers drifted |
+
+Letting a pop move a cursor without `ready`, letting the writer run past the
+depth, and leaving the cursors alone on an arm each make it fail.
 
 `protoemu_arb_miter` proves **cross-machine non-interference**, which is the
 property the per-machine proof cannot see. Two copies of the arbiter get the
