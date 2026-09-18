@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-<testsuite timestamp="2026-09-17T21:11:22" hostname="apollo" package="protoemu_barrier" id="0" name="default" tests="40" errors="0" failures="0" time="0" skipped="0">
+<testsuite timestamp="2026-09-18T17:06:40" hostname="apollo" package="protoemu_barrier" id="0" name="default" tests="40" errors="0" failures="0" time="0" skipped="0">
 <properties>
 <property name="os" value="Linux"/>
 <property name="expect" value="PASS"/>
@@ -88,27 +88,27 @@
 </testcase>
 <testcase classname="default" name="Property ASSERT in protoemu_barrier at protoemu_barrier.v:77.59-77.84" time="0" type="ASSERT" location="protoemu_barrier.v:77.59-77.84" id="_witness_.check_assert_protoemu_barrier_v_77_82">
 </testcase>
-<system-out>SBY 21:11:22 [protoemu_barrier] Removing directory '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier'.
-SBY 21:11:22 [protoemu_barrier] Copy '/home/umar_imran/Music/asic_comp/formal/../src/protoemu_barrier.v' to '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier/src/protoemu_barrier.v'.
-SBY 21:11:22 [protoemu_barrier] engine_0: smtbmc yices
-SBY 21:11:22 [protoemu_barrier] base: starting process &quot;cd protoemu_barrier/src; yosys -ql ../model/design.log ../model/design.ys&quot;
-SBY 21:11:22 [protoemu_barrier] base: finished (returncode=0)
-SBY 21:11:22 [protoemu_barrier] prep: starting process &quot;cd protoemu_barrier/model; yosys -ql design_prep.log design_prep.ys&quot;
-SBY 21:11:22 [protoemu_barrier] prep: finished (returncode=0)
-SBY 21:11:22 [protoemu_barrier] smt2: starting process &quot;cd protoemu_barrier/model; yosys -ql design_smt2.log design_smt2.ys&quot;
-SBY 21:11:22 [protoemu_barrier] smt2: finished (returncode=0)
-SBY 21:11:22 [protoemu_barrier] engine_0: starting process &quot;cd protoemu_barrier; yosys-smtbmc -s yices --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2&quot;
-SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Solver: yices
-SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Checking assumptions in step 0..
-SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Checking assertions in step 0..
-SBY 21:11:22 [protoemu_barrier] engine_0: ##   0:00:00  Status: passed
-SBY 21:11:22 [protoemu_barrier] engine_0: finished (returncode=0)
-SBY 21:11:22 [protoemu_barrier] engine_0: Status returned by engine: pass
-SBY 21:11:22 [protoemu_barrier] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
-SBY 21:11:22 [protoemu_barrier] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
-SBY 21:11:22 [protoemu_barrier] summary: engine_0 (smtbmc yices) returned pass
-SBY 21:11:22 [protoemu_barrier] summary: engine_0 did not produce any traces
-SBY 21:11:22 [protoemu_barrier] DONE (PASS, rc=0)
+<system-out>SBY 17:06:40 [protoemu_barrier] Removing directory '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier'.
+SBY 17:06:40 [protoemu_barrier] Copy '/home/umar_imran/Music/asic_comp/formal/../src/protoemu_barrier.v' to '/home/umar_imran/Music/asic_comp/formal/protoemu_barrier/src/protoemu_barrier.v'.
+SBY 17:06:40 [protoemu_barrier] engine_0: smtbmc yices
+SBY 17:06:40 [protoemu_barrier] base: starting process &quot;cd protoemu_barrier/src; yosys -ql ../model/design.log ../model/design.ys&quot;
+SBY 17:06:40 [protoemu_barrier] base: finished (returncode=0)
+SBY 17:06:40 [protoemu_barrier] prep: starting process &quot;cd protoemu_barrier/model; yosys -ql design_prep.log design_prep.ys&quot;
+SBY 17:06:40 [protoemu_barrier] prep: finished (returncode=0)
+SBY 17:06:40 [protoemu_barrier] smt2: starting process &quot;cd protoemu_barrier/model; yosys -ql design_smt2.log design_smt2.ys&quot;
+SBY 17:06:40 [protoemu_barrier] smt2: finished (returncode=0)
+SBY 17:06:40 [protoemu_barrier] engine_0: starting process &quot;cd protoemu_barrier; yosys-smtbmc -s yices --presat --unroll --noprogress -t 1  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2&quot;
+SBY 17:06:40 [protoemu_barrier] engine_0: ##   0:00:00  Solver: yices
+SBY 17:06:40 [protoemu_barrier] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 17:06:40 [protoemu_barrier] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 17:06:40 [protoemu_barrier] engine_0: ##   0:00:00  Status: passed
+SBY 17:06:40 [protoemu_barrier] engine_0: finished (returncode=0)
+SBY 17:06:40 [protoemu_barrier] engine_0: Status returned by engine: pass
+SBY 17:06:40 [protoemu_barrier] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 17:06:40 [protoemu_barrier] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 17:06:40 [protoemu_barrier] summary: engine_0 (smtbmc yices) returned pass
+SBY 17:06:40 [protoemu_barrier] summary: engine_0 did not produce any traces
+SBY 17:06:40 [protoemu_barrier] DONE (PASS, rc=0)
 </system-out>
 <system-err>
 </system-err>

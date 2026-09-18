@@ -98,7 +98,7 @@ between bursts.
 
 | Register | Width | Purpose |
 |---|---|---|
-| `PC` | 7 | program counter, 128 instructions |
+| `PC` | 6 | program counter, 64 instructions, shared by all four machines |
 | `X`, `Y` | 8 | scratch, loop counters |
 | `SHIFT` | 16 | serial data register |
 | `TGT` | 16 | deadline, compared against the shared cycle counter |

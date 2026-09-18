@@ -18,13 +18,16 @@ The core is organised around three ideas:
 - **Pin-oriented ISA.** Instructions read pins, write pins, wait on pin edges or
   levels, shift bits in and out of a data register, and delay for a programmed
   number of cycles.
-- **Independent state machines.** Multiple program counters share one pin block,
-  so full-duplex protocols (SPI, or simultaneous UART TX and RX) run without
-  interleaving a single instruction stream by hand. This build has one machine;
-  the store and pin block are already shared, which is what lets more be added.
+- **Four independent state machines.** Four program counters share one store and
+  one pin block, so full-duplex protocols (SPI, or simultaneous UART TX and RX)
+  run without interleaving a single instruction stream by hand. Each pin belongs
+  to the lowest-numbered machine that claims it, and `SYS BARRIER` lets machines
+  meet and resume on the same cycle.
 
-Instruction memory is 128 x 16 bits, loaded over a simple SPI configuration port
-after reset, which is what makes the design reprogrammable in silicon.
+Instruction memory is 64 x 16 bits, shared by all four machines and loaded over
+a simple SPI configuration port after reset, which is what makes the design
+reprogrammable in silicon. Each machine is told where in the store its program
+begins, so one store holds four programs.
 
 Three things set it apart from a conventional bit-bang engine:
 
@@ -50,9 +53,11 @@ goals bounded by the achievable clock rate.
 This design targets the IHP CMOS5L 130nm process at 6x4 tiles
 (1289.28 x 710.64 um) with a 50 MHz clock.
 
-> **Status:** one state machine, the full instruction set, the configuration
-> port and timestamped edge capture. Additional state machines are next. See
-> `docs/architecture.md` for the measured area position.
+> **Status:** four state machines, the full instruction set, the configuration
+> port, timestamped edge capture and barriers between machines. Synthesis is at
+> 30.4% of the die with pre-layout slack met. See `docs/architecture.md` for the
+> measured area position and `docs/scaling.md` for how the machine count and
+> store depth were settled.
 
 ## How to test
 

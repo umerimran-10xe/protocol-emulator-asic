@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Umer Imran
  * SPDX-License-Identifier: Apache-2.0
  *
- * Program store: 128 x 16 bits in flip-flops, one synchronous write port, one
+ * Program store: 64 x 16 bits in flip-flops, one synchronous write port, one
  * combinational fetch port per state machine, and one more for SPI readback.
  *
  * Flops rather than an SRAM macro: docs/area-budget.md measures this at 11% of
